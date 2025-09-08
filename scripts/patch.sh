@@ -1,11 +1,15 @@
 #!/bin/bash
 
+# die on errors
+set -eEuo pipefail
+
 ROOT=$(git rev-parse --show-toplevel)
+QEMU_DIR=$ROOT/qemu
 HW_NAME=cafe
 
 # link our device source inside qemu
-ln -s $ROOT/src/hw/$HW_NAME $ROOT/qemu/hw/
+ln -s $ROOT/src/hw/$HW_NAME $QEMU_DIR/hw/
 
 # include it in the build steps
-echo "source $HW_NAME/Kconfig" >> $ROOT/qemu/hw/Kconfig
-echo "subdir('$HW_NAME')" >> qemu/hw/meson.build
+echo "source $HW_NAME/Kconfig" >> $QEMU_DIR/hw/Kconfig
+echo "subdir('$HW_NAME')" >> $QEMU_DIR/hw/meson.build
