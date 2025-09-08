@@ -6,7 +6,7 @@ QEMU_BIN=$QEMU_DIR/build/qemu-system-x86_64
 
 # macos workaround
 if [ ! -f $QEMU_BIN ]; then
-  $QEMU_BIN=$QEMU_BIN-unsigned
+  QEMU_BIN=$QEMU_BIN-unsigned
 fi
 
 DRIVE=$ROOT/images/disks/cafe-debian-amd64.qcow2
