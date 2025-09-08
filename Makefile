@@ -1,13 +1,13 @@
 QEMU_DIR := qemu
-BUILD_DIR := build
-BUILD_TARGETS := x86_64-softmmu
+BUILD_DIR := $(QEMU_DIR)/build
 PATCH_MARKER := $(QEMU_DIR)/.patched
+BUILD_TARGETS := x86_64-softmmu
 
 build: patch
 	@if [ ! -d $(BUILD_DIR) ]; then \
 		mkdir -p $(BUILD_DIR) && \
 		cd $(BUILD_DIR) && \
-		../$(QEMU_DIR)/configure --target-list=$(BUILD_TARGETS); \
+		../configure --target-list=$(BUILD_TARGETS); \
 	fi
 	$(MAKE) -C $(BUILD_DIR)
 
