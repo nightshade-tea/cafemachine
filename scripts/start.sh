@@ -2,7 +2,12 @@
 
 ROOT=$(git rev-parse --show-toplevel)
 QEMU_DIR=$ROOT/qemu
-QEMU_BIN=$QEMU_DIR/build/qemu-system-x86_64-unsigned
+QEMU_BIN=$QEMU_DIR/build/qemu-system-x86_64
+
+# macos workaround
+if [ ! -f $QEMU_BIN ]; then
+  $QEMU_BIN=$QEMU_BIN-unsigned
+fi
 
 DRIVE=$ROOT/images/disks/cafe-debian-amd64.qcow2
 CDROM=$ROOT/images/isos/debian-13.1.0-amd64-netinst.iso
