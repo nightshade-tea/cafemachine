@@ -1,0 +1,35 @@
+QEMU_DIR := qemu
+BUILD_DIR := build
+BUILD_TARGETS := x86_64-softmmu
+PATCH_MARKER := $(QEMU_DIR)/.patched
+
+build: patch
+	@if [ ! -d $(BUILD_DIR) ]; then \
+		mkdir -p $(BUILD_DIR) && \
+		cd $(BUILD_DIR) && \
+		../$(QEMU_DIR)/configure --target-list=$(BUILD_TARGETS); \
+	fi
+	$(MAKE) -C $(BUILD_DIR)
+
+patch:
+	@if [ ! -f $(PATCH_MARKER) ]; then \
+		git submodule update --init $(QEMU_DIR) && \
+		bash ./scripts/patch.sh && \
+		touch $(PATCH_MARKER) && \
+		echo "QEMU patched"; \
+	else \
+		echo "patch already applied ($(PATCH_MARKER) exists)"; \
+	fi
+
+run:
+	bash ./scripts/start.sh
+
+clean:
+	@if [ -d $(BUILD_DIR) ]; then \
+		$(MAKE) -C $(BUILD_DIR) clean; \
+	fi
+
+prune:
+	rm -rf $(BUILD_DIR)
+
+.PHONY: build patch run clean prune
