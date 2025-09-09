@@ -14,8 +14,9 @@ CDROM=$ROOT/images/isos/debian-13.1.0-amd64-netinst.iso
 SHARED=$ROOT
 
 $QEMU_BIN                                                   \
-  -smp 2                                                    \
-  -m 2G                                                     \
+  -accel kvm                                                \
+  -smp 8                                                    \
+  -m 8G                                                     \
   -boot c                                                   \
   -drive file=$DRIVE,format=qcow2,if=virtio,cache=writeback \
   -netdev user,id=net0                                      \
