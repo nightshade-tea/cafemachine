@@ -12,10 +12,9 @@
 #include "qemu/main-loop.h" /* iothread mutex */
 #include "qemu/module.h"
 #include "qapi/visitor.h"
+#include "hw/cafe/cafe.h"
 
-#define TYPE_CAFE_DEVICE "cafe"
-#define CAFE_VENDOR_ID 0x1ced
-#define CAFE_DEVICE_ID 0xcafe
+#define TYPE_CAFE_DEVICE CAFE_HW_NAME
 
 /* https://elixir.bootlin.com/qemu/v10.1.0/source/include/qom/object.h#L220 */
 OBJECT_DECLARE_TYPE(CafeState, CafeClass, CAFE_DEVICE);
