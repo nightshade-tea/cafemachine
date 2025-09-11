@@ -3,6 +3,7 @@
 
 /* todo: remove unneeded includes */
 #include "qemu/osdep.h"
+#include "hw/cafe/cafe.h"
 #include "hw/pci/msi.h"
 #include "hw/pci/pci.h"
 #include "qapi/visitor.h"
@@ -13,9 +14,7 @@
 #include "qemu/units.h"
 #include "qom/object.h"
 
-#define TYPE_CAFE_DEVICE "cafe"
-#define CAFE_VENDOR_ID 0x1ced
-#define CAFE_DEVICE_ID 0xcafe
+#define TYPE_CAFE_DEVICE CAFE_HW_NAME
 
 /* https://elixir.bootlin.com/qemu/v10.1.0/source/include/qom/object.h#L220 */
 OBJECT_DECLARE_TYPE(CafeState, CafeClass, CAFE_DEVICE);
