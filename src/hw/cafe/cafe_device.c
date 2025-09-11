@@ -1,4 +1,4 @@
-#include "cafe.h"
+#include "cafe_device.h"
 #include "mmio.h"
 
 static void cafe_realize(PCIDevice *pci_dev, Error **errp) {

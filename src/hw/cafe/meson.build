@@ -1,4 +1,4 @@
 system_ss.add(when: 'CONFIG_CAFE', if_true: files(
-      'cafe.c',
+      'cafe_device.c',
       'mmio.c'
 ))

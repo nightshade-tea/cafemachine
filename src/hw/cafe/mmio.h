@@ -1,7 +1,7 @@
 #ifndef CAFE_MMIO_H
 #define CAFE_MMIO_H
 
-#include "cafe.h"
+#include "cafe_device.h"
 
 #define CAFE_MMIO_NAME "cafe-mmio"
 #define CAFE_MMIO_SIZE 8
