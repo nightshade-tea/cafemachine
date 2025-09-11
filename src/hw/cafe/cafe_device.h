@@ -1,5 +1,5 @@
-#ifndef CAFE_H
-#define CAFE_H
+#ifndef CAFE_DEVICE_H
+#define CAFE_DEVICE_H
 
 /* todo: remove unneeded includes */
 #include "qemu/osdep.h"
@@ -30,4 +30,4 @@ typedef struct CafeState {
     uint64_t reg;
 } CafeState;
 
-#endif /* CAFE_H */
+#endif /* CAFE_DEVICE_H */
