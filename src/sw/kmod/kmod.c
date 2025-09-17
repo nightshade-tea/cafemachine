@@ -1,6 +1,6 @@
-#include "cafe_kmod.h"
-#include "cafe_data.h"
-#include "cafe_mmio.h"
+#include "kmod.h"
+#include "data.h"
+#include "mmio.h"
 #include "hw/cafe.h"
 
 MODULE_LICENSE("GPL");

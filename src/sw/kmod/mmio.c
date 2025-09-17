@@ -1,6 +1,6 @@
-#include "cafe_mmio.h"
-#include "cafe_kmod.h"
-#include "cafe_data.h"
+#include "mmio.h"
+#include "kmod.h"
+#include "data.h"
 #include "hw/cafe.h"
 
 #define MMIO_TEST_VAL 0x1cedcafeLLU
