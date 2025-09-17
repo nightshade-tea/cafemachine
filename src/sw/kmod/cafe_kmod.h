@@ -7,8 +7,4 @@
 
 #define CAFE_KMOD_NAME "cafe_kmod"
 
-struct CafeDeviceData {
-  void __iomem *mmio;
-};
-
 #endif /* _CAFE_KMOD_H_ */

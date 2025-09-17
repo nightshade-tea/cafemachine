@@ -1,4 +1,4 @@
-obj-m += cafe_kmod.o
+obj-m += cafe_data.o cafe_kmod.o
 ccflags-y := -I$(src)/../../../include
 
 all:
