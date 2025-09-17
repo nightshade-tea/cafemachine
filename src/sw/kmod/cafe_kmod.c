@@ -26,8 +26,7 @@ static int mmio_init(struct pci_dev *dev)
 	 * reserved by owner res_name. Do not access any address inside the PCI
 	 * regions unless this call returns successfully. */
 
-	if (!(err = pci_request_region(dev, CAFE_MMIO_BAR_NUM,
-				       CAFE_KMOD_NAME))) {
+	if (err = pci_request_region(dev, CAFE_MMIO_BAR_NUM, CAFE_KMOD_NAME)) {
 		dev_err(&dev->dev, "pci_request_region() failed: %d\n", err);
 		return err;
 	}
@@ -37,7 +36,7 @@ static int mmio_init(struct pci_dev *dev)
 	 * functions hide the details if this is a MMIO or PIO address space and
 	 * will just do what you expect from them in the correct way. */
 
-	if (!(dev->dev->driver_data->mmio =
+	if (!(((struct cafe_dev_data *)dev->dev.driver_data)->mmio =
 		      pci_iomap(dev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE))) {
 		dev_err(&dev->dev, "pci_iomap() failed!");
 		return -ENOMEM;
@@ -48,7 +47,7 @@ static int mmio_init(struct pci_dev *dev)
 
 static void mmio_deinit(struct pci_dev *dev)
 {
-	pci_iounmap(dev, dev->dev->driver_data->mmio);
+	pci_iounmap(dev, ((struct cafe_dev_data *)dev->dev.driver_data)->mmio);
 	pci_release_region(dev, CAFE_MMIO_BAR_NUM);
 }
 
@@ -60,17 +59,17 @@ static int cafe_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 	dev_info(&dev->dev, "Found cafe device\n");
 
-	if (!(dev->dev->driver_data = cafe_dev_data_alloc())) {
+	if (!(dev->dev.driver_data = cafe_dev_data_alloc())) {
 		dev_err(&dev->dev, "cafe_dev_data_alloc() failed!");
 		return -ENOMEM;
 	}
 
-	if (!(err = pci_enable_device(dev))) {
+	if (err = pci_enable_device(dev)) {
 		dev_err(&dev->dev, "pci_enable_device() failed: %d\n", err);
 		return err;
 	}
 
-	if (!(err = mmio_init(dev))) {
+	if (err = mmio_init(dev)) {
 		dev_err(&dev->dev, "mmio_init() failed: %d\n", err);
 		return err;
 	}
@@ -84,8 +83,8 @@ static void cafe_remove(struct pci_dev *dev)
 	pci_disable_device(dev);
 
 	mmio_deinit(dev);
-	cafe_dev_data_free(dev->dev->driver_data);
-	dev->dev->driver_data = NULL;
+	cafe_dev_data_free(dev->dev.driver_data);
+	dev->dev.driver_data = NULL;
 
 	dev_info(&dev->dev, "Removed cafe device\n");
 }
@@ -101,8 +100,8 @@ static int __init cafe_init(void)
 {
 	int err;
 
-	if (!(err = pci_register_driver(&cafe_pci_driver))) {
-		pr_err("pci_register_driver() failed: %d\n");
+	if (err = pci_register_driver(&cafe_pci_driver)) {
+		pr_err("pci_register_driver() failed: %d\n", err);
 		return err;
 	}
 
