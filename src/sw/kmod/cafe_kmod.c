@@ -2,6 +2,8 @@
 #include "cafe_data.h"
 #include "hw/cafe.h"
 
+#define MMIO_TEST_VAL 0x1cedcafeLLU
+
 MODULE_LICENSE("GPL");
 
 /* specifies which devices the driver supports */
@@ -25,7 +27,7 @@ static int mmio_init(struct pci_dev *dev) {
      * reserved by owner res_name. Do not access any address inside the PCI
      * regions unless this call returns successfully. */
 
-    if (err = pci_request_region(dev, CAFE_MMIO_BAR_NUM, CAFE_KMOD_NAME)) {
+    if ((err = pci_request_region(dev, CAFE_MMIO_BAR_NUM, CAFE_KMOD_NAME))) {
         dev_err (&dev->dev, "pci_request_region() failed: %d\n", err);
         return err;
     }
@@ -40,6 +42,12 @@ static int mmio_init(struct pci_dev *dev) {
         dev_err (&dev->dev, "pci_iomap() failed!");
         return -ENOMEM;
     }
+
+    dev_info (&dev->dev, "mmio test: writing %llx\n", MMIO_TEST_VAL);
+    writeq (MMIO_TEST_VAL, ((struct cafe_dev_data
+                    *)dev->dev.driver_data)->mmio);
+    dev_info (&dev->dev, "valor lido %llx\n", readq(((struct cafe_dev_data
+                        *)dev->dev.driver_data)->mmio));
 
     return 0;
 }
@@ -61,12 +69,12 @@ static int cafe_probe(struct pci_dev *dev, const struct pci_device_id *id) {
         return -ENOMEM;
     }
 
-    if (err = pci_enable_device(dev)) {
+    if ((err = pci_enable_device(dev))) {
         dev_err (&dev->dev, "pci_enable_device() failed: %d\n", err);
         return err;
     }
 
-    if (err = mmio_init(dev)) {
+    if ((err = mmio_init(dev))) {
         dev_err (&dev->dev, "mmio_init() failed: %d\n", err);
         return err;
     }
@@ -95,7 +103,7 @@ static struct pci_driver cafe_pci_driver = {
 static int __init cafe_init(void) {
     int err;
 
-    if (err = pci_register_driver(&cafe_pci_driver)) {
+    if ((err = pci_register_driver(&cafe_pci_driver))) {
         pr_err("pci_register_driver() failed: %d\n", err);
         return err;
     }
