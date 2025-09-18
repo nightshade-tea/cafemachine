@@ -18,6 +18,9 @@ int cafe_mmio_init(struct pci_dev *pdev) {
         return -ENOMEM;
     }
 
+    /* The device driver needs to call pci_request_region() to verify no other
+     * device is already using the same address resource. */
+
     /* Mark the PCI region associated with PCI device pdev BAR bar as being
      * reserved by owner res_name. Do not access any address inside the PCI
      * regions unless this call returns successfully. */

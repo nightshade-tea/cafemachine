@@ -38,6 +38,9 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
         return err;
     }
 
+    /* The driver can only determine MMIO and IO Port resource availability
+     * _after_ calling pci_enable_device(). */
+
     if ((err = cafe_mmio_init(pdev))) {
         dev_err (dev, "cafe_mmio_init() failed: %d\n", err);
         return err;
@@ -51,6 +54,10 @@ static void cafe_remove(struct pci_dev *pdev) {
     struct device *dev;
 
     dev = &pdev->dev;
+
+    /* drivers should call pci_release_region() AFTER calling
+     * pci_disable_device(). The idea is to prevent two devices colliding on
+     * the same address range. */
 
     pci_disable_device(pdev);
     cafe_mmio_deinit(pdev);
