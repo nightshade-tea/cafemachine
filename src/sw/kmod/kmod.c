@@ -17,38 +17,48 @@ static struct pci_device_id cafe_id_table[] = {
 
 MODULE_DEVICE_TABLE(pci, cafe_id_table);
 
-static int cafe_probe(struct pci_dev *dev, const struct pci_device_id *id) {
+static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
+    struct cafe_dev_data *data;
+    struct device *dev;
     int err;
 
-    dev_info(&dev->dev, "Found cafe device\n");
+    dev = &pdev->dev;
 
-    if (!(dev->dev.driver_data = cafe_dev_data_alloc())) {
-        dev_err (&dev->dev, "cafe_dev_data_alloc() failed!");
+    dev_info(dev, "Found cafe device\n");
+
+    if (!(data = cafe_dev_data_alloc())) {
+        dev_err (dev, "cafe_dev_data_alloc() failed!");
         return -ENOMEM;
     }
 
-    if ((err = pci_enable_device(dev))) {
-        dev_err (&dev->dev, "pci_enable_device() failed: %d\n", err);
+    pci_set_drvdata (pdev, data);
+
+    if ((err = pci_enable_device(pdev))) {
+        dev_err (dev, "pci_enable_device() failed: %d\n", err);
         return err;
     }
 
-    if ((err = cafe_mmio_init(dev))) {
-        dev_err (&dev->dev, "cafe_mmio_init() failed: %d\n", err);
+    if ((err = cafe_mmio_init(pdev))) {
+        dev_err (dev, "cafe_mmio_init() failed: %d\n", err);
         return err;
     }
 
-    dev_info(&dev->dev, "Initialized cafe device\n");
+    dev_info(dev, "Initialized cafe device\n");
     return 0;
 }
 
-static void cafe_remove(struct pci_dev *dev) {
-    pci_disable_device(dev);
+static void cafe_remove(struct pci_dev *pdev) {
+    struct device *dev;
 
-    cafe_mmio_deinit(dev);
-    cafe_dev_data_free(dev->dev.driver_data);
-    dev->dev.driver_data = NULL;
+    dev = &pdev->dev;
 
-    dev_info(&dev->dev, "Removed cafe device\n");
+    pci_disable_device(pdev);
+    cafe_mmio_deinit(pdev);
+
+    cafe_dev_data_free(pci_get_drvdata(pdev));
+    pci_set_drvdata(pdev, NULL);
+
+    dev_info(dev, "Removed cafe device\n");
 }
 
 static struct pci_driver cafe_pci_driver = {
