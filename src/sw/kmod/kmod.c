@@ -5,6 +5,8 @@
 
 MODULE_LICENSE("GPL");
 
+static struct class *cafe_class;
+
 /* specifies which devices the driver supports */
 static struct pci_device_id cafe_id_table[] = {
     { PCI_DEVICE(CAFE_VENDOR_ID, CAFE_DEVICE_ID) },
@@ -77,6 +79,13 @@ static struct pci_driver cafe_pci_driver = {
 
 static int __init cafe_init(void) {
     int err;
+
+    cafe_class = class_create(THIS_MODULE, CAFE_KMOD_NAME);
+
+    if (IS_ERR(cafe_class)) {
+        pr_err("class_create() failed!\n");
+        return PTR_ERR(cafe_class);
+    }
 
     if ((err = pci_register_driver(&cafe_pci_driver))) {
         pr_err("pci_register_driver() failed: %d\n", err);
