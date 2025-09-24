@@ -25,7 +25,7 @@ int cafe_mmio_init(struct pci_dev *pdev) {
      * reserved by owner res_name. Do not access any address inside the PCI
      * regions unless this call returns successfully. */
 
-    if ((err = pci_request_region(pdev, CAFE_MMIO_BAR_NUM, CAFE_KMOD_NAME))) {
+    if ((err = pci_request_region(pdev, CAFE_MMIO_BAR_NUM, CAFE_HW_NAME))) {
         dev_err (dev, "pci_request_region() failed: %d\n", err);
         return err;
     }

@@ -5,6 +5,8 @@
 
 struct cafe_dev_data {
   void __iomem *mmio;
+  struct device *chrdev;
+  dev_t dev_num;
 };
 
 struct cafe_dev_data *cafe_dev_data_alloc(void);

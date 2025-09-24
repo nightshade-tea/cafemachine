@@ -5,6 +5,6 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 
-#define CAFE_KMOD_NAME "cafe_kmod"
+#define DEV_MINOR 0
 
 #endif /* _CAFE_KMOD_H_ */
