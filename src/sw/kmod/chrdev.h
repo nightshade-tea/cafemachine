@@ -13,4 +13,6 @@ int cafe_chrdev_create(struct pci_dev *pdev);
 
 void cafe_chrdev_destroy(struct pci_dev *pdev);
 
+struct pci_dev *cafe_minor_to_dev(int minor);
+
 #endif /* _CAFE_CHRDEV_H_ */

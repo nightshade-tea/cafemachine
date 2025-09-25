@@ -1,5 +1,6 @@
 #include "chrdev.h"
 #include "data.h"
+#include "fops.h"
 #include "hw/cafe.h"
 
 #define MINORS_XA_LIMIT XA_LIMIT(0, 255)
@@ -35,7 +36,7 @@ static void free_minor(struct pci_dev *pdev)
 	xa_erase(&ctrl.minors_xa, MINOR(data->dev_num));
 }
 
-static struct pci_dev *cafe_minor_to_dev(int minor)
+struct pci_dev *cafe_minor_to_dev(int minor)
 {
 	return xa_load(&ctrl.minors_xa, minor);
 }
@@ -78,6 +79,10 @@ int cafe_chrdev_init(void)
 {
 	xa_init_flags(&ctrl.minors_xa, XA_FLAGS_ALLOC);
 	ctrl.minors_lim = MINORS_XA_LIMIT;
+
+	/* set file operations */
+	ctrl.fops.owner = THIS_MODULE;
+	ctrl.fops.mmap = cafe_mmap;
 
 	/* If you pass a major number of 0 to register_chrdev, the return value
 	 * will be the dynamically allocated major number. */
