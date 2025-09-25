@@ -48,6 +48,11 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return err;
 	}
 
+	if ((err = cafe_chrdev_create(pdev))) {
+		dev_err(dev, "cafe_chrdev_create() failed: %d\n", err);
+		return err;
+	}
+
 	dev_info(dev, "Initialized cafe device\n");
 	return 0;
 }
@@ -63,6 +68,7 @@ static void cafe_remove(struct pci_dev *pdev)
 	 * the same address range. */
 
 	pci_disable_device(pdev);
+	cafe_chrdev_destroy(pdev);
 	cafe_mmio_deinit(pdev);
 
 	cafe_dev_data_free(pci_get_drvdata(pdev));
