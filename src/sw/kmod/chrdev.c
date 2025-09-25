@@ -45,7 +45,7 @@ int cafe_chrdev_create(struct pci_dev *pdev) {
     dev = &pdev->dev;
     data = pci_get_drvdata(pdev);
 
-    if (!(err = allocate_minor(pdev))) {
+    if ((err = allocate_minor(pdev))) {
         dev_err (dev, "allocate_minor() failed: %d\n", err);
         return err;
     }
@@ -66,6 +66,7 @@ void cafe_chrdev_destroy(struct pci_dev *pdev) {
 
     data = pci_get_drvdata(pdev);
     device_destroy(ctrl.chrdev_class, data->dev_num);
+    free_minor(pdev);
 }
 
 int cafe_chrdev_init(void) {
@@ -94,6 +95,5 @@ int cafe_chrdev_init(void) {
 void cafe_chrdev_deinit(void) {
     class_destroy(ctrl.chrdev_class);
     unregister_chrdev(ctrl.major, CAFE_HW_NAME);
-    /* do i need to unregister all minor devices? */
     xa_destroy(&ctrl.minors_xa);
 }
