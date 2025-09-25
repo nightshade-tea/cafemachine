@@ -70,8 +70,7 @@ void cafe_chrdev_destroy(struct pci_dev *pdev) {
 }
 
 int cafe_chrdev_init(void) {
-
-    xa_init(&ctrl.minors_xa);
+    xa_init_flags(&ctrl.minors_xa, XA_FLAGS_ALLOC);
     ctrl.minors_lim = MINORS_XA_LIMIT;
 
     /* If you pass a major number of 0 to register_chrdev, the return value

@@ -100,8 +100,8 @@ static int __init cafe_init(void) {
 }
 
 static void cafe_exit(void) {
-    cafe_chrdev_deinit();
     pci_unregister_driver(&cafe_pci_driver);
+    cafe_chrdev_deinit();
     printk("Cafe driver unloaded\n");
 }
 
