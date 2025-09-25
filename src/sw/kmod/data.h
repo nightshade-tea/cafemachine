@@ -3,8 +3,15 @@
 
 #include <linux/slab.h>
 
-struct cafe_dev_data {
+struct cafe_bar {
+  u64 start;
+  u64 end;
+  u64 len;
   void __iomem *mmio;
+};
+
+struct cafe_dev_data {
+  struct cafe_bar bar;
   struct device *chrdev;
   dev_t dev_num;
 };

@@ -35,15 +35,19 @@ int cafe_mmio_init(struct pci_dev *pdev) {
      * the details if this is a MMIO or PIO address space and will just do what
      * you expect from them in the correct way. */
 
-    if (!(data->mmio = pci_iomap(pdev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE))) {
+    if (!(data->bar.mmio = pci_iomap(pdev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE))) {
         dev_err (dev, "pci_iomap() failed!");
         return -ENOMEM;
     }
 
+    data->bar.start = pci_resource_start(pdev, CAFE_MMIO_BAR_NUM);
+    data->bar.end = pci_resource_end(pdev, CAFE_MMIO_BAR_NUM);
+    data->bar.len = pci_resource_len(pdev, CAFE_MMIO_BAR_NUM);
+
     /* test mmio */
     dev_info (dev, "mmio test: writing %llx\n", MMIO_TEST_VAL);
-    writeq (MMIO_TEST_VAL, data->mmio);
-    mmio_test = readq(data->mmio);
+    writeq (MMIO_TEST_VAL, data->bar.mmio);
+    mmio_test = readq(data->bar.mmio);
     dev_info (dev, "mmio test: got %llx\n", mmio_test);
 
     if (mmio_test != MMIO_TEST_VAL)
@@ -55,8 +59,8 @@ int cafe_mmio_init(struct pci_dev *pdev) {
 void cafe_mmio_deinit(struct pci_dev *pdev) {
     struct cafe_dev_data *data;
 
-    if ((data = pci_get_drvdata(pdev)) && data->mmio)
-        pci_iounmap(pdev, data->mmio);
+    if ((data = pci_get_drvdata(pdev)) && data->bar.mmio)
+        pci_iounmap(pdev, data->bar.mmio);
 
     pci_release_region(pdev, CAFE_MMIO_BAR_NUM);
 }
