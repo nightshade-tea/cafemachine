@@ -71,6 +71,9 @@ void cafe_chrdev_destroy(struct pci_dev *pdev) {
 
 int cafe_chrdev_init(void) {
 
+    xa_init(&ctrl.minors_xa);
+    ctrl.minors_lim = MINORS_XA_LIMIT;
+
     /* If you pass a major number of 0 to register_chrdev, the return value
      * will be the dynamically allocated major number. */
 
@@ -85,9 +88,6 @@ int cafe_chrdev_init(void) {
         pr_err("class_create() failed!\n");
         return PTR_ERR(ctrl.chrdev_class);
     }
-
-    xa_init(&ctrl.minors_xa);
-    ctrl.minors_lim = MINORS_XA_LIMIT;
 
     return 0;
 }
