@@ -27,14 +27,15 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
 
     if (!(data = cafe_dev_data_alloc())) {
         dev_err (dev, "cafe_dev_data_alloc() failed!");
-        return -ENOMEM;
+        err = -ENOMEM;
+        goto err_cafe_dev_data_alloc;
     }
 
     pci_set_drvdata (pdev, data);
 
     if ((err = pci_enable_device(pdev))) {
         dev_err (dev, "pci_enable_device() failed: %d\n", err);
-        return err;
+        goto err_pci_enable_device;
     }
 
     /* The driver can only determine MMIO and IO Port resource availability
@@ -42,16 +43,30 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
 
     if ((err = cafe_mmio_init(pdev))) {
         dev_err (dev, "cafe_mmio_init() failed: %d\n", err);
-        return err;
+        goto err_cafe_mmio_init;
     }
 
     if ((err = cafe_chrdev_create(pdev))) {
         dev_err (dev, "cafe_chrdev_create() failed: %d\n", err);
-        return err;
+        goto err_cafe_chrdev_create;
     }
 
     dev_info(dev, "Initialized cafe device\n");
     return 0;
+
+err_cafe_chrdev_create:
+    cafe_mmio_deinit(pdev);
+
+err_cafe_mmio_init:
+    pci_disable_device(pdev);
+
+err_pci_enable_device:
+    cafe_dev_data_free(pci_get_drvdata(pdev));
+    pci_set_drvdata(pdev, NULL);
+
+err_cafe_dev_data_alloc:
+
+    return err;
 }
 
 static void cafe_remove(struct pci_dev *pdev) {
@@ -85,7 +100,7 @@ static int __init cafe_init(void) {
 
     if ((err = cafe_chrdev_init()) < 0) {
         pr_err("cafe_chrdev_init() failed: %d\n", err);
-        goto err_chrdev_init;
+        goto err_cafe_chrdev_init;
     }
 
     if ((err = pci_register_driver(&cafe_pci_driver))) {
@@ -99,7 +114,7 @@ static int __init cafe_init(void) {
 err_pci_register_driver:
     cafe_chrdev_deinit();
 
-err_chrdev_init:
+err_cafe_chrdev_init:
 
     return err;
 }
