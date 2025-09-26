@@ -6,7 +6,7 @@
 #define CAFE_DEVICE_ID 0xcafe
 
 #define CAFE_MMIO_NAME "cafe-mmio"
-#define CAFE_MMIO_SIZE 8
+#define CAFE_MMIO_SIZE 4096
 #define CAFE_MMIO_BAR_NUM 0
 
 #endif /* CAFE_H */

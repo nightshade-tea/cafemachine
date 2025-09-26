@@ -26,7 +26,7 @@ typedef struct CafeClass {
 typedef struct CafeState {
     PCIDevice pci_dev;
     MemoryRegion mmio;
-    uint64_t reg;
+    uint64_t buf[CAFE_MMIO_SIZE / 8];
 } CafeState;
 
 #endif /* CAFE_DEVICE_H */
