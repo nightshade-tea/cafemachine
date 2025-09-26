@@ -1,9 +1,11 @@
 #include "cafe_device.h"
 #include "mmio.h"
+#include "irq.h"
 
 static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
     CafeState *dev = CAFE_DEVICE(pci_dev);
     cafe_mmio_init(dev, errp);
+    cafe_irq_init(dev, errp);
 }
 
 static void cafe_class_init(ObjectClass *klass, const void *data) {
