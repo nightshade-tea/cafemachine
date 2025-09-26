@@ -9,4 +9,6 @@
 #define CAFE_MMIO_SIZE 4096
 #define CAFE_MMIO_BAR_NUM 0
 
+#define CAFE_HW_MSI_VECTOR_CNT 1
+
 #endif /* CAFE_H */
