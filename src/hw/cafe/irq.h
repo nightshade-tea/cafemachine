@@ -5,12 +5,6 @@
 #include "qemu/osdep.h"
 #include "hw/pci/pci.h"
 
-#define CAFE_IRQ_MAX_VECTORS 32
-
-typedef struct IRQStatusMSI {
-    bool state[CAFE_IRQ_MAX_VECTORS];
-} IRQStatusMSI;
-
 void cafe_irq_init(CafeState *dev, Error **errp);
 
 void cafe_irq_deinit(CafeState *dev);

@@ -9,7 +9,7 @@ build: patch
 		cd $(BUILD_DIR) && \
 		../configure --target-list=$(BUILD_TARGETS); \
 	fi
-	$(MAKE) -C $(BUILD_DIR)
+	$(MAKE) -j$(shell nproc) -C $(BUILD_DIR)
 
 patch:
 	@if [ ! -f $(PATCH_MARKER) ]; then \

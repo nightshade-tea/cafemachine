@@ -1,5 +1,5 @@
 #include "irq.h"
-#include "hw/cafe.h"
+#include "hw/cafe/cafe.h"
 
 void cafe_irq_init(CafeState *dev, Error **errp) {
     if (msi_init(&dev->pci_dev, 0, CAFE_HW_MSI_VECTOR_CNT, true, false, errp))
