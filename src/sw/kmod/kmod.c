@@ -87,16 +87,23 @@ static int __init cafe_init(void) {
 
     if ((err = cafe_chrdev_init()) < 0) {
         pr_err("cafe_chrdev_init() failed: %d\n", err);
-        return err;
+        goto err_chrdev_init;
     }
 
     if ((err = pci_register_driver(&cafe_pci_driver))) {
         pr_err("pci_register_driver() failed: %d\n", err);
-        return err;
+        goto err_pci_register_driver;
     }
 
     printk("Cafe driver loaded\n");
     return 0;
+
+err_pci_register_driver:
+    cafe_chrdev_deinit();
+
+err_chrdev_init:
+
+    return err;
 }
 
 static void cafe_exit(void) {
