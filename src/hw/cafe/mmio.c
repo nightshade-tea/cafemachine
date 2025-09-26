@@ -1,4 +1,5 @@
 #include "mmio.h"
+#include "irq.h"
 
 #define VALID_MIN_ACCESS_SIZE 8
 #define VALID_MAX_ACCESS_SIZE 8
@@ -20,6 +21,16 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
     CafeState *dev = opaque;
 
     /* todo: check if write is valid */
+
+    switch (addr) {
+    case 0:
+        if (dev->irq[0]) {
+            cafe_irq_lower(dev, 0);
+        } else {
+            cafe_irq_raise(dev, 0);
+        }
+        break;
+    }
 
     dev->buf[addr / 8] = data;
 }
