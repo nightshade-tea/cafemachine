@@ -10,7 +10,7 @@ static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
 
     /* todo: check if read is valid */
 
-    return dev->reg;
+    return dev->buf[addr / 8];
 }
 
 static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
@@ -19,7 +19,7 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
 
     /* todo: check if write is valid */
 
-    dev->reg = data;
+    dev->buf[addr / 8] = data;
 }
 
 void cafe_mmio_init(CafeState *dev, Error **errp) {
