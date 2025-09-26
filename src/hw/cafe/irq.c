@@ -1,5 +1,5 @@
 #include "irq.h"
-#include "hw/cafe.h"
+#include "hw/cafe/cafe.h"
 
 void cafe_irq_init(CafeState *dev, Error **errp)
 {

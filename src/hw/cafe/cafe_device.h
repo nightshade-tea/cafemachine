@@ -26,7 +26,7 @@ typedef struct CafeClass {
 typedef struct CafeState {
     PCIDevice pci_dev;
     MemoryRegion mmio;
-    IRQStatusMSI irq;
+    bool irq[CAFE_IRQ_MAX_VECTORS];
     uint64_t buf[CAFE_MMIO_SIZE / 8];
 } CafeState;
 
