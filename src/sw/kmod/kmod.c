@@ -2,6 +2,7 @@
 #include "data.h"
 #include "mmio.h"
 #include "chrdev.h"
+#include "irq.h"
 #include "hw/cafe.h"
 
 /* specifies which devices the driver supports */
@@ -50,6 +51,8 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
         dev_err (dev, "cafe_chrdev_create() failed: %pe\n", ERR_PTR(err));
         goto err_cafe_chrdev_create;
     }
+
+    cafe_irq_enable(pdev);
 
     dev_info(dev, "cafe device initialized\n");
     return 0;
