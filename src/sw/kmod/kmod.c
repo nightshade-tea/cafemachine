@@ -4,8 +4,6 @@
 #include "hw/cafe.h"
 #include "mmio.h"
 
-MODULE_LICENSE("GPL");
-
 /* specifies which devices the driver supports */
 static struct pci_device_id cafe_id_table[] = {
 	{PCI_DEVICE(CAFE_VENDOR_ID, CAFE_DEVICE_ID)},
