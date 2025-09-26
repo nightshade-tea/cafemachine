@@ -23,18 +23,18 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
 
     dev = &pdev->dev;
 
-    dev_info(dev, "Found cafe device\n");
+    dev_info(dev, "found cafe device\n");
 
     if (!(data = cafe_dev_data_alloc())) {
-        dev_err (dev, "cafe_dev_data_alloc() failed!");
         err = -ENOMEM;
+        dev_err (dev, "cafe_dev_data_alloc() failed: %pe\n", ERR_PTR(err));
         goto err_cafe_dev_data_alloc;
     }
 
     pci_set_drvdata (pdev, data);
 
     if ((err = pci_enable_device(pdev))) {
-        dev_err (dev, "pci_enable_device() failed: %d\n", err);
+        dev_err (dev, "pci_enable_device() failed: %pe\n", ERR_PTR(err));
         goto err_pci_enable_device;
     }
 
@@ -42,16 +42,16 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
      * _after_ calling pci_enable_device(). */
 
     if ((err = cafe_mmio_init(pdev))) {
-        dev_err (dev, "cafe_mmio_init() failed: %d\n", err);
+        dev_err (dev, "cafe_mmio_init() failed: %pe\n", ERR_PTR(err));
         goto err_cafe_mmio_init;
     }
 
     if ((err = cafe_chrdev_create(pdev))) {
-        dev_err (dev, "cafe_chrdev_create() failed: %d\n", err);
+        dev_err (dev, "cafe_chrdev_create() failed: %pe\n", ERR_PTR(err));
         goto err_cafe_chrdev_create;
     }
 
-    dev_info(dev, "Initialized cafe device\n");
+    dev_info(dev, "cafe device initialized\n");
     return 0;
 
 err_cafe_chrdev_create:
@@ -66,6 +66,7 @@ err_pci_enable_device:
 
 err_cafe_dev_data_alloc:
 
+    dev_err (dev, "failed to initialize cafe device!\n");
     return err;
 }
 
@@ -85,7 +86,7 @@ static void cafe_remove(struct pci_dev *pdev) {
     cafe_dev_data_free(pci_get_drvdata(pdev));
     pci_set_drvdata(pdev, NULL);
 
-    dev_info(dev, "Removed cafe device\n");
+    dev_info(dev, "cafe device removed\n");
 }
 
 static struct pci_driver cafe_pci_driver = {
@@ -99,16 +100,16 @@ static int __init cafe_init(void) {
     int err;
 
     if ((err = cafe_chrdev_init()) < 0) {
-        pr_err("cafe_chrdev_init() failed: %d\n", err);
+        pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));
         goto err_cafe_chrdev_init;
     }
 
     if ((err = pci_register_driver(&cafe_pci_driver))) {
-        pr_err("pci_register_driver() failed: %d\n", err);
+        pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
         goto err_pci_register_driver;
     }
 
-    printk("Cafe driver loaded\n");
+    printk("cafe driver loaded\n");
     return 0;
 
 err_pci_register_driver:
@@ -116,13 +117,14 @@ err_pci_register_driver:
 
 err_cafe_chrdev_init:
 
+    pr_err("failed to load cafe driver!\n");
     return err;
 }
 
 static void cafe_exit(void) {
     pci_unregister_driver(&cafe_pci_driver);
     cafe_chrdev_deinit();
-    printk("Cafe driver unloaded\n");
+    printk("cafe driver unloaded\n");
 }
 
 module_init(cafe_init);
