@@ -3,7 +3,8 @@ cafe-objs += kmod.o data.o mmio.o chrdev.o fops.o
 ccflags-y := -I$(src)/../../../include
 
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	$(MAKE) -j$(shell nproc) -C /lib/modules/$(shell uname -r)/build M=$(PWD) \
+		modules
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
