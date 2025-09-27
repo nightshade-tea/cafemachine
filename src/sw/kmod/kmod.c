@@ -39,6 +39,10 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
         goto err_pci_enable_device;
     }
 
+    /* Enable bus mastering for DMA and MSI */
+
+    pci_set_master(pdev);
+
     /* The driver can only determine MMIO and IO Port resource availability
      * _after_ calling pci_enable_device(). */
 
@@ -52,10 +56,16 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
         goto err_cafe_chrdev_create;
     }
 
-    cafe_irq_enable(pdev);
+    if ((err = cafe_irq_enable(pdev))) {
+        dev_err (dev, "cafe_irq_enable() failed: %pe\n", ERR_PTR(err));
+        goto err_cafe_irq_enable;
+    }
 
     dev_info(dev, "cafe device initialized\n");
     return 0;
+
+err_cafe_irq_enable:
+    cafe_chrdev_destroy(pdev);
 
 err_cafe_chrdev_create:
     cafe_mmio_deinit(pdev);
