@@ -3,12 +3,9 @@
 #include "data.h"
 #include "hw/cafe.h"
 
-#define MMIO_TEST_VAL 0x1cedcafeLLU
-
 int cafe_mmio_init(struct pci_dev *pdev) {
     struct cafe_dev_data *data;
     struct device *dev;
-    uint64_t mmio_test;
     int err;
 
     dev = &pdev->dev;
@@ -41,15 +38,6 @@ int cafe_mmio_init(struct pci_dev *pdev) {
     data->bar.start = pci_resource_start(pdev, CAFE_MMIO_BAR_NUM);
     data->bar.end = pci_resource_end(pdev, CAFE_MMIO_BAR_NUM);
     data->bar.len = pci_resource_len(pdev, CAFE_MMIO_BAR_NUM);
-
-    /* test mmio */
-    dev_info (dev, "mmio test: writing %llx\n", MMIO_TEST_VAL);
-    writeq (MMIO_TEST_VAL, data->bar.mmio);
-    mmio_test = readq(data->bar.mmio);
-    dev_info (dev, "mmio test: got %llx\n", mmio_test);
-
-    if (mmio_test != MMIO_TEST_VAL)
-        dev_warn (dev, "mmio test failed!\n");
 
     return 0;
 
