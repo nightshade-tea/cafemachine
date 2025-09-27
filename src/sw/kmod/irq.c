@@ -27,19 +27,38 @@ int cafe_irq_enable(struct pci_dev *pdev) {
     if ((err = pci_alloc_irq_vectors(pdev, CAFE_HW_MSI_VECTOR_CNT,
                 CAFE_HW_MSI_VECTOR_CNT, PCI_IRQ_MSI)) < 0)
     {
-        dev_err(dev, "failed to allocate irq vectors: %pe\n", ERR_PTR(err));
-        return err;
+        dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n", ERR_PTR(err));
+        goto err_pci_alloc_irq_vectors;
     }
 
     if ((irqn = pci_irq_vector(pdev, 0)) < 0) {
-        dev_err(dev, "pci_irq_vector() failed: %pe\n", ERR_PTR(irqn));
-        return irqn;
+        err = irqn;
+        dev_err(dev, "pci_irq_vector() failed: %pe\n", ERR_PTR(err));
+        goto err_pci_irq_vector;
     }
 
     if ((err = request_irq(irqn, cafe_irq_handler, 0, CAFE_HW_NAME, pdev))) {
         dev_err(dev, "request_irq() failed: %pe\n", ERR_PTR(err));
-        return err;
+        goto err_request_irq;
     }
 
     return 0;
+
+err_request_irq:
+
+err_pci_irq_vector:
+    pci_free_irq_vectors(pdev);
+
+err_pci_alloc_irq_vectors:
+
+    return err;
+}
+
+void cafe_irq_disable(struct pci_dev *pdev) {
+    int irqn;
+
+    if ((irqn = pci_irq_vector(pdev, 0)) >= 0)
+        free_irq(irqn, pdev);
+
+    pci_free_irq_vectors(pdev);
 }

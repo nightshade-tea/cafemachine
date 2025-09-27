@@ -88,6 +88,8 @@ static void cafe_remove(struct pci_dev *pdev) {
 
     dev = &pdev->dev;
 
+    cafe_irq_disable(pdev);
+
     /* drivers should call pci_release_region() AFTER calling
      * pci_disable_device(). The idea is to prevent two devices colliding on
      * the same address range. */
