@@ -12,11 +12,7 @@ int cafe_mmio_init(struct pci_dev *pdev) {
     int err;
 
     dev = &pdev->dev;
-
-    if (!(data = pci_get_drvdata(pdev))) {
-        dev_err (dev, "pci_get_drvdata() returned NULL!");
-        return -ENOMEM;
-    }
+    data = pci_get_drvdata(pdev);
 
     /* The device driver needs to call pci_request_region() to verify no other
      * device is already using the same address resource. */
@@ -26,8 +22,8 @@ int cafe_mmio_init(struct pci_dev *pdev) {
      * regions unless this call returns successfully. */
 
     if ((err = pci_request_region(pdev, CAFE_MMIO_BAR_NUM, CAFE_HW_NAME))) {
-        dev_err (dev, "pci_request_region() failed: %d\n", err);
-        return err;
+        dev_err (dev, "pci_request_region() failed: %pe\n", ERR_PTR(err));
+        goto err_pci_request_region;
     }
 
     /* Using this function you will get a __iomem address to your device BAR.
@@ -35,9 +31,11 @@ int cafe_mmio_init(struct pci_dev *pdev) {
      * the details if this is a MMIO or PIO address space and will just do what
      * you expect from them in the correct way. */
 
-    if (!(data->bar.mmio = pci_iomap(pdev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE))) {
-        dev_err (dev, "pci_iomap() failed!");
-        return -ENOMEM;
+    if (!(data->bar.mmio = pci_iomap(pdev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE)))
+    {
+        dev_err (dev, "pci_iomap() failed: NULL\n");
+        err = -ENOMEM;
+        goto err_pci_iomap;
     }
 
     data->bar.start = pci_resource_start(pdev, CAFE_MMIO_BAR_NUM);
@@ -54,13 +52,20 @@ int cafe_mmio_init(struct pci_dev *pdev) {
         dev_warn (dev, "mmio test failed!\n");
 
     return 0;
+
+err_pci_iomap:
+    pci_release_region(pdev, CAFE_MMIO_BAR_NUM);
+
+err_pci_request_region:
+
+    return err;
 }
 
 void cafe_mmio_deinit(struct pci_dev *pdev) {
     struct cafe_dev_data *data;
 
-    if ((data = pci_get_drvdata(pdev)) && data->bar.mmio)
-        pci_iounmap(pdev, data->bar.mmio);
+    data = pci_get_drvdata(pdev);
 
+    pci_iounmap(pdev, data->bar.mmio);
     pci_release_region(pdev, CAFE_MMIO_BAR_NUM);
 }
