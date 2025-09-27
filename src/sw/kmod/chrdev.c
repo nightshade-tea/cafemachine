@@ -47,19 +47,25 @@ int cafe_chrdev_create(struct pci_dev *pdev) {
     data = pci_get_drvdata(pdev);
 
     if ((err = allocate_minor(pdev))) {
-        dev_err (dev, "allocate_minor() failed: %d\n", err);
-        return err;
+        dev_err (dev, "allocate_minor() failed: %pe\n", ERR_PTR(err));
+        goto err_allocate_minor;
     }
 
-    data->chrdev = device_create(ctrl.chrdev_class, dev, data->dev_num, NULL,
-            CAFE_HW_NAME);
-
-    if (IS_ERR(data->chrdev)) {
-        dev_err(dev, "device_create() failed!\n");
-        return PTR_ERR(data->chrdev);
+    if (IS_ERR(data->chrdev = device_create(ctrl.chrdev_class, dev,
+                    data->dev_num, NULL, CAFE_HW_NAME))) {
+        dev_err (dev, "device_create() failed: %pe\n", data->chrdev);
+        err = PTR_ERR(data->chrdev);
+        goto err_device_create;
     }
 
     return 0;
+
+err_device_create:
+    free_minor(pdev);
+
+err_allocate_minor:
+
+    return err;
 }
 
 void cafe_chrdev_destroy(struct pci_dev *pdev) {
@@ -71,6 +77,8 @@ void cafe_chrdev_destroy(struct pci_dev *pdev) {
 }
 
 int cafe_chrdev_init(void) {
+    int err;
+
     xa_init_flags(&ctrl.minors_xa, XA_FLAGS_ALLOC);
     ctrl.minors_lim = MINORS_XA_LIMIT;
 
@@ -82,18 +90,25 @@ int cafe_chrdev_init(void) {
      * will be the dynamically allocated major number. */
 
     if ((ctrl.major = register_chrdev(0, CAFE_HW_NAME, &ctrl.fops)) < 0) {
-        pr_err("register_chrdev() failed: %d\n", ctrl.major);
-        return ctrl.major;
+        pr_err("register_chrdev() failed: %pe\n", ERR_PTR(ctrl.major));
+        err = ctrl.major;
+        goto err_register_chrdev;
     }
 
-    ctrl.chrdev_class = class_create(CAFE_HW_NAME);
-
-    if (IS_ERR(ctrl.chrdev_class)) {
-        pr_err("class_create() failed!\n");
-        return PTR_ERR(ctrl.chrdev_class);
+    if (IS_ERR(ctrl.chrdev_class = class_create(CAFE_HW_NAME))) {
+        pr_err("class_create() failed: %pe\n", ctrl.chrdev_class);
+        err = PTR_ERR(ctrl.chrdev_class);
+        goto err_class_create;
     }
 
     return 0;
+
+err_class_create:
+    unregister_chrdev(ctrl.major, CAFE_HW_NAME);
+
+err_register_chrdev:
+
+    return err;
 }
 
 void cafe_chrdev_deinit(void) {
