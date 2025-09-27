@@ -1,4 +1,4 @@
 **/.*.swp
 **/*.qcow2
 **/*.iso
-build/
+qemu-debug.log
