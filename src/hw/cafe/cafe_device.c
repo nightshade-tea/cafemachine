@@ -1,4 +1,5 @@
 #include "cafe_device.h"
+#include "cafe_log.h"
 #include "mmio.h"
 #include "irq.h"
 
@@ -6,6 +7,7 @@ static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
     CafeState *dev = CAFE_DEVICE(pci_dev);
     cafe_mmio_init(dev, errp);
     cafe_irq_init(dev, errp);
+    cafe_log("device realized\n");
 }
 
 static void cafe_class_init(ObjectClass *klass, const void *data) {
@@ -18,6 +20,7 @@ static void cafe_class_init(ObjectClass *klass, const void *data) {
     pci_device_class->class_id = PCI_CLASS_OTHERS;
 
     set_bit(DEVICE_CATEGORY_MISC, device_class->categories);
+    cafe_log("class initialized\n");
 }
 
 static const TypeInfo cafe_info = {

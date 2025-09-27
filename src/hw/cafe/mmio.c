@@ -1,4 +1,5 @@
 #include "mmio.h"
+#include "cafe_log.h"
 #include "irq.h"
 
 #define VALID_MIN_ACCESS_SIZE 8
@@ -8,6 +9,7 @@
 
 static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
     CafeState *dev = opaque;
+    cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
 
     /* todo: check if read is valid */
 
@@ -19,6 +21,9 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
     CafeState *dev = opaque;
 
     /* todo: check if write is valid */
+
+    cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size,
+        addr, data);
 
     switch (addr) {
       case 0:
@@ -37,6 +42,8 @@ void cafe_mmio_init(CafeState *dev, Error **errp) {
             CAFE_MMIO_NAME, CAFE_MMIO_SIZE);
     pci_register_bar(&dev->pci_dev, CAFE_MMIO_BAR_NUM,
             PCI_BASE_ADDRESS_SPACE_MEMORY, &dev->mmio);
+
+    cafe_log("mmio initialized\n");
 }
 
 const MemoryRegionOps cafe_mmio_ops = {
