@@ -33,7 +33,7 @@ int cafe_mmio_init(struct pci_dev *pdev) {
 
     if (!(data->bar.mmio = pci_iomap(pdev, CAFE_MMIO_BAR_NUM, CAFE_MMIO_SIZE)))
     {
-        dev_err (dev, "pci_iomap() failed: NULL\n");
+        dev_err (dev, "pci_iomap() returned NULL\n");
         err = -ENOMEM;
         goto err_pci_iomap;
     }
