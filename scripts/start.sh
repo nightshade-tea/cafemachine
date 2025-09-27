@@ -19,4 +19,5 @@ $QEMU_BIN                                                   \
   -virtfs local,path=$SHARED,mount_tag=share9p,security_model=mapped-xattr,id=shared9p  \
   -device cafe                                              \
   -nographic                                                \
-  -serial mon:stdio
+  -serial mon:stdio                                         \
+  -D $ROOT/qemu-debug.log
