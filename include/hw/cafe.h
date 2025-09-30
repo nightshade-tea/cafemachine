@@ -12,6 +12,8 @@
 #define CAFE_IRQ_MAX_VECTORS 32
 #define CAFE_HW_MSI_VECTOR_CNT 1
 
+#define CAFE_DMA_BUF_SZ 0x1000
+
 enum cafe_cmd {
   CAFE_DMA_READ,
   CAFE_DMA_WRITE,

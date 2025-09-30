@@ -1,4 +1,5 @@
 #include "mmio.h"
+#include "dma.h"
 #include "cafe_log.h"
 #include "irq.h"
 
@@ -7,13 +8,51 @@
 #define IMPL_MIN_ACCESS_SIZE 8
 #define IMPL_MAX_ACCESS_SIZE 8
 
+static void cafe_cmd (CafeState *dev) {
+  switch (dev->mem.cmd) {
+    case CAFE_DMA_READ:
+      cafe_dma_read (dev, dev->dma_buf);
+      break;
+
+    case CAFE_DMA_WRITE:
+      cafe_dma_write (dev, dev->dma_buf);
+      break;
+  }
+
+  dev->mem.cmd = 0;
+}
+
 static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
     CafeState *dev = opaque;
     cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
 
-    /* todo: check if read is valid */
+    switch (addr) {
+      case CAFE_CMD:
+        if (CAFE_CMD_SIZE != size)
+          return 0LL;
 
-    return dev->buf[addr / 8];
+        return dev->mem.cmd;
+
+      case CAFE_DMA_SRC:
+        if (CAFE_DMA_SRC_SIZE != size)
+          return 0LL;
+
+        return dev->mem.dma_src;
+
+      case CAFE_DMA_DST:
+        if (CAFE_DMA_DST_SIZE != size)
+          return 0LL;
+
+        return dev->mem.dma_dst;
+
+      case CAFE_DMA_SZ:
+        if (CAFE_DMA_SZ_SIZE != size)
+          return 0LL;
+
+        return dev->mem.dma_sz;
+    }
+
+    return 0LL;
 }
 
 static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
@@ -30,6 +69,7 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
           return;
 
         dev->mem.cmd = data;
+        cafe_cmd(dev);
         break;
 
       case CAFE_DMA_SRC:
