@@ -28,6 +28,7 @@ typedef struct CafeState {
     MemoryRegion mmio;
     CafeMemory mem;
     bool irq[CAFE_IRQ_MAX_VECTORS];
+    uint8_t dma_buf[CAFE_DMA_BUF_SZ];
 } CafeState;
 
 #endif /* CAFE_DEVICE_H */
