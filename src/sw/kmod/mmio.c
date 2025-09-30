@@ -3,7 +3,7 @@
 #include "data.h"
 #include "hw/cafe.h"
 
-int cafe_mmio_init(struct pci_dev *pdev) {
+int cafe_mmio_enable(struct pci_dev *pdev) {
     struct cafe_dev_data *data;
     struct device *dev;
     int err;
@@ -49,7 +49,7 @@ err_pci_request_region:
     return err;
 }
 
-void cafe_mmio_deinit(struct pci_dev *pdev) {
+void cafe_mmio_disable(struct pci_dev *pdev) {
     struct cafe_dev_data *data;
 
     data = pci_get_drvdata(pdev);

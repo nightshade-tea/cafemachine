@@ -5,8 +5,8 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 
-int cafe_mmio_init(struct pci_dev *pdev);
+int cafe_mmio_enable(struct pci_dev *pdev);
 
-void cafe_mmio_deinit(struct pci_dev *pdev);
+void cafe_mmio_disable(struct pci_dev *pdev);
 
 #endif /* _CAFE_MMIO_H_ */

@@ -46,9 +46,9 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
     /* The driver can only determine MMIO and IO Port resource availability
      * _after_ calling pci_enable_device(). */
 
-    if ((err = cafe_mmio_init(pdev))) {
-        dev_err (dev, "cafe_mmio_init() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_mmio_init;
+    if ((err = cafe_mmio_enable(pdev))) {
+        dev_err (dev, "cafe_mmio_enable() failed: %pe\n", ERR_PTR(err));
+        goto err_cafe_mmio_enable;
     }
 
     if ((err = cafe_chrdev_create(pdev))) {
@@ -68,9 +68,9 @@ err_cafe_irq_enable:
     cafe_chrdev_destroy(pdev);
 
 err_cafe_chrdev_create:
-    cafe_mmio_deinit(pdev);
+    cafe_mmio_disable(pdev);
 
-err_cafe_mmio_init:
+err_cafe_mmio_enable:
     pci_disable_device(pdev);
 
 err_pci_enable_device:
@@ -96,7 +96,7 @@ static void cafe_remove(struct pci_dev *pdev) {
 
     pci_disable_device(pdev);
     cafe_chrdev_destroy(pdev);
-    cafe_mmio_deinit(pdev);
+    cafe_mmio_disable(pdev);
 
     cafe_dev_data_free(pci_get_drvdata(pdev));
     pci_set_drvdata(pdev, NULL);
