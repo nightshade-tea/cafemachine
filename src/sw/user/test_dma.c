@@ -22,5 +22,9 @@ int main() {
     return 1;
   }
 
+  mem[CAFE_DMA_SRC] = 0LL;
+  mem[CAFE_DMA_SZ] = 512LL;
+  mem[CAFE_CMD] = 0LL;
+
   return 0;
 }

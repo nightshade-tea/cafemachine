@@ -1,8 +1,6 @@
 #ifndef CAFE_H
 #define CAFE_H
 
-#include <stddef.h>
-
 #define CAFE_HW_NAME "cafe"
 #define CAFE_VENDOR_ID 0x1ced
 #define CAFE_DEVICE_ID 0xcafe
@@ -21,28 +19,12 @@ enum cafe_cmd {
   CAFE_DMA_WRITE,
 };
 
-typedef struct __attribute__((packed)) CafeMemory {
-  uint8_t cmd;
-  uint64_t dma_src;
-  uint64_t dma_dst;
-  uint64_t dma_sz;
-} CafeMemory;
-
-#define __CAFE_MEM_OFFSETOF(member) offsetof(struct CafeMemory, member)
-#define __CAFE_MEM_SIZEOF(member) sizeof(((struct CafeMemory*)0)->member)
-
 enum {
-  CAFE_CMD = __CAFE_MEM_OFFSETOF(cmd),
-  CAFE_DMA_SRC = __CAFE_MEM_OFFSETOF(dma_src),
-  CAFE_DMA_DST = __CAFE_MEM_OFFSETOF(dma_dst),
-  CAFE_DMA_SZ = __CAFE_MEM_OFFSETOF(dma_sz),
-};
-
-enum {
-  CAFE_CMD_SIZE = __CAFE_MEM_SIZEOF(cmd),
-  CAFE_DMA_SRC_SIZE = __CAFE_MEM_SIZEOF(dma_src),
-  CAFE_DMA_DST_SIZE = __CAFE_MEM_SIZEOF(dma_dst),
-  CAFE_DMA_SZ_SIZE = __CAFE_MEM_SIZEOF(dma_sz),
+  CAFE_CMD,
+  CAFE_DMA_SRC,
+  CAFE_DMA_DST,
+  CAFE_DMA_SZ,
+  REG_MAX_NUM,
 };
 
 #endif /* CAFE_H */

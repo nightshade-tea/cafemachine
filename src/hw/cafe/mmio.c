@@ -3,13 +3,14 @@
 #include "cafe_log.h"
 #include "irq.h"
 
-#define VALID_MIN_ACCESS_SIZE 8
-#define VALID_MAX_ACCESS_SIZE 8
-#define IMPL_MIN_ACCESS_SIZE 8
-#define IMPL_MAX_ACCESS_SIZE 8
+#define ACCESS_SIZE 8
+#define VALID_MIN_ACCESS_SIZE ACCESS_SIZE
+#define VALID_MAX_ACCESS_SIZE ACCESS_SIZE
+#define IMPL_MIN_ACCESS_SIZE ACCESS_SIZE
+#define IMPL_MAX_ACCESS_SIZE ACCESS_SIZE
 
 static void cafe_cmd (CafeState *dev) {
-  switch (dev->mem.cmd) {
+  switch (dev->r[CAFE_CMD]) {
     case CAFE_DMA_READ:
       cafe_dma_read (dev, dev->dma_buf);
       break;
@@ -19,37 +20,25 @@ static void cafe_cmd (CafeState *dev) {
       break;
   }
 
-  dev->mem.cmd = 0;
+  dev->r[CAFE_CMD] = 0;
 }
 
 static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
     CafeState *dev = opaque;
     cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
 
-    switch (addr) {
+    switch (addr / ACCESS_SIZE) {
       case CAFE_CMD:
-        if (CAFE_CMD_SIZE != size)
-          return 0LL;
-
-        return dev->mem.cmd;
+        return dev->r[CAFE_CMD];
 
       case CAFE_DMA_SRC:
-        if (CAFE_DMA_SRC_SIZE != size)
-          return 0LL;
-
-        return dev->mem.dma_src;
+        return dev->r[CAFE_DMA_SRC];
 
       case CAFE_DMA_DST:
-        if (CAFE_DMA_DST_SIZE != size)
-          return 0LL;
-
-        return dev->mem.dma_dst;
+        return dev->r[CAFE_DMA_DST];
 
       case CAFE_DMA_SZ:
-        if (CAFE_DMA_SZ_SIZE != size)
-          return 0LL;
-
-        return dev->mem.dma_sz;
+        return dev->r[CAFE_DMA_SZ];
     }
 
     return 0LL;
@@ -63,34 +52,22 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
     cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size,
         addr, data);
 
-    switch (addr) {
+    switch (addr / ACCESS_SIZE) {
       case CAFE_CMD:
-        if (CAFE_CMD_SIZE != size)
-          return;
-
-        dev->mem.cmd = data;
+        dev->r[CAFE_CMD] = data;
         cafe_cmd(dev);
         break;
 
       case CAFE_DMA_SRC:
-        if (CAFE_DMA_SRC_SIZE != size)
-          return;
-
-        dev->mem.dma_src = data;
+        dev->r[CAFE_DMA_SRC] = data;
         break;
 
       case CAFE_DMA_DST:
-        if (CAFE_DMA_DST_SIZE != size)
-          return;
-
-        dev->mem.dma_dst = data;
+        dev->r[CAFE_DMA_DST] = data;
         break;
 
       case CAFE_DMA_SZ:
-        if (CAFE_DMA_SZ_SIZE != size)
-          return;
-
-        dev->mem.dma_sz = data;
+        dev->r[CAFE_DMA_SZ] = data;
         break;
     }
 
