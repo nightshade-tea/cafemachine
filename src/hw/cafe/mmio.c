@@ -20,21 +20,40 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
         unsigned size) {
     CafeState *dev = opaque;
 
-    /* todo: check if write is valid */
 
     cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size,
         addr, data);
 
     switch (addr) {
-      case 0:
-        if (dev->irq[0])
-          cafe_irq_lower(dev, 0);
-        else
-          cafe_irq_raise(dev, 0);
+      case CAFE_CMD:
+        if (CAFE_CMD_SIZE != size)
+          return;
+
+        dev->mem.cmd = data;
+        break;
+
+      case CAFE_DMA_SRC:
+        if (CAFE_DMA_SRC_SIZE != size)
+          return;
+
+        dev->mem.dma_src = data;
+        break;
+
+      case CAFE_DMA_DST:
+        if (CAFE_DMA_DST_SIZE != size)
+          return;
+
+        dev->mem.dma_dst = data;
+        break;
+
+      case CAFE_DMA_SZ:
+        if (CAFE_DMA_SZ_SIZE != size)
+          return;
+
+        dev->mem.dma_sz = data;
         break;
     }
 
-    dev->buf[addr / 8] = data;
 }
 
 void cafe_mmio_init(CafeState *dev, Error **errp) {
