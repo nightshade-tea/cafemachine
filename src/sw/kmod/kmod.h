@@ -5,7 +5,7 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 
-#define DEV_MINOR 0
+#define CAFE_DMA_BIT_MASK DMA_BIT_MASK(64)
 
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
