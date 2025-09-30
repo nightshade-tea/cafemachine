@@ -1,6 +1,7 @@
 #include "kmod.h"
 #include "chrdev.h"
 #include "data.h"
+#include "dma.h"
 #include "hw/cafe.h"
 #include "irq.h"
 #include "mmio.h"
@@ -37,7 +38,7 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pci_set_drvdata(pdev, data);
 
 	if ((err = pci_enable_device(pdev))) {
-		dev_err(dev, "pci_enable_device() failed: %pe\n", err_ptr(err));
+		dev_err(dev, "pci_enable_device() failed: %pe\n", ERR_PTR(err));
 		goto err_pci_enable_device;
 	}
 
@@ -48,7 +49,7 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Enable Memory-Write-Invalidate for DMA */
 
 	if ((err = pci_set_mwi(pdev))) {
-		dev_err(dev, "pci_set_mwi() failed: %pe\n", err_ptr(err));
+		dev_err(dev, "pci_set_mwi() failed: %pe\n", ERR_PTR(err));
 		goto err_pci_set_mwi;
 	}
 
@@ -71,8 +72,16 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_cafe_irq_enable;
 	}
 
+	if ((err = cafe_dma_enable(pdev))) {
+		dev_err(dev, "cafe_dma_enable() failed: %pe\n", ERR_PTR(err));
+		goto err_cafe_dma_enable;
+	}
+
 	dev_info(dev, "cafe device initialized\n");
 	return 0;
+
+err_cafe_dma_enable:
+	cafe_irq_disable(pdev);
 
 err_cafe_irq_enable:
 	cafe_chrdev_destroy(pdev);
