@@ -32,6 +32,9 @@ int cafe_dma_enable(struct pci_dev *pdev) {
     writeq(virt_to_phys(buf), data->bar.mmio + CAFE_DMA_SRC * 8);
     writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
 
+    for (int i = 0; i < 512; i++)
+        printk("%#02x", buf[i]);
+
     kfree(buf);
     return 0;
 }
