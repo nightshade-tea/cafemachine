@@ -1,7 +1,7 @@
 #include "fops.h"
 #include "chrdev.h"
 #include "data.h"
-#include "hw/cafe.h"
+#include "cafe.h"
 
 int cafe_mmap(struct file *f, struct vm_area_struct *vma) {
     struct pci_dev *pdev;

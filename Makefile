@@ -14,6 +14,7 @@ build: patch
 patch:
 	@if [ ! -f $(PATCH_MARKER) ]; then \
 		git submodule update --init $(QEMU_DIR) && \
+		git config submodule.$(QEMU_DIR).ignore all && \
 		bash ./scripts/patch.sh && \
 		touch $(PATCH_MARKER) && \
 		echo "QEMU patched"; \
@@ -32,4 +33,7 @@ clean:
 prune:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: build patch run clean prune
+deinit:
+	git submodule deinit -f $(QEMU_DIR)
+
+.PHONY: build patch run clean prune deinit

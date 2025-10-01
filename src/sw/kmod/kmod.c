@@ -4,7 +4,7 @@
 #include "chrdev.h"
 #include "irq.h"
 #include "dma.h"
-#include "hw/cafe.h"
+#include "cafe.h"
 
 /* specifies which devices the driver supports */
 static struct pci_device_id cafe_id_table[] = {

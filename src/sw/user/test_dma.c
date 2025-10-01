@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdint.h>
-#include "hw/cafe.h"
+#include "cafe.h"
 
 int main() {
   uint64_t *mem;

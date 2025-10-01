@@ -1,6 +1,6 @@
 #include "irq.h"
 #include "data.h"
-#include "hw/cafe.h"
+#include "cafe.h"
 
 static irqreturn_t cafe_irq_handler(int irq, void *data) {
     struct pci_dev *pdev;

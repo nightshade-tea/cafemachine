@@ -1,7 +1,7 @@
 #include "chrdev.h"
 #include "data.h"
 #include "fops.h"
-#include "hw/cafe.h"
+#include "cafe.h"
 
 #define MINORS_XA_LIMIT XA_LIMIT(0, 255)
 

@@ -12,7 +12,7 @@
 #include "qemu/main-loop.h" /* iothread mutex */
 #include "qemu/module.h"
 #include "qapi/visitor.h"
-#include "hw/cafe/cafe.h"
+#include "cafe.h"
 
 #define TYPE_CAFE_DEVICE CAFE_HW_NAME
 
