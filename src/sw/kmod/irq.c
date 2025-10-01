@@ -1,6 +1,6 @@
 #include "irq.h"
+#include "cafe.h"
 #include "data.h"
-#include "hw/cafe.h"
 
 static irqreturn_t cafe_irq_handler(int irq, void *data)
 {

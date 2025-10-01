@@ -1,4 +1,4 @@
-#include "hw/cafe.h"
+#include "cafe.h"
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>

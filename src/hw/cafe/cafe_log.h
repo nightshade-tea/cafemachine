@@ -1,7 +1,7 @@
 #ifndef CAFE_LOG_H
 #define CAFE_LOG_H
 
-#include "hw/cafe/cafe.h"
+#include "cafe.h"
 
 #define cafe_log(...) qemu_log(CAFE_HW_NAME ": " __VA_ARGS__)
 

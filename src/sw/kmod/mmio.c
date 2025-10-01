@@ -1,6 +1,6 @@
 #include "mmio.h"
+#include "cafe.h"
 #include "data.h"
-#include "hw/cafe.h"
 #include "kmod.h"
 
 int cafe_mmio_enable(struct pci_dev *pdev)

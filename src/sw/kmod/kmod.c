@@ -1,8 +1,8 @@
 #include "kmod.h"
+#include "cafe.h"
 #include "chrdev.h"
 #include "data.h"
 #include "dma.h"
-#include "hw/cafe.h"
 #include "irq.h"
 #include "mmio.h"
 

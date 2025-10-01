@@ -3,7 +3,7 @@
 
 /* todo: remove unneeded includes */
 #include "qemu/osdep.h"
-#include "hw/cafe/cafe.h"
+#include "cafe.h"
 #include "hw/pci/msi.h"
 #include "hw/pci/pci.h"
 #include "qapi/visitor.h"
