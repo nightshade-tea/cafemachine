@@ -1,6 +1,29 @@
 #include "dma.h"
 #include "kmod.h"
+#include "data.h"
+#include "cafe.h"
 
 int cafe_dma_enable(struct pci_dev *pdev) {
-    return dma_set_mask_and_coherent(&pdev->dev, CAFE_DMA_BIT_MASK);
+    struct device *dev;
+    struct cafe_dev_data *data;
+    char *buf;
+
+    dev = &pdev->dev;
+    data = pci_get_drvdata(pdev);
+
+    dma_set_mask_and_coherent(&pdev->dev, CAFE_DMA_BIT_MASK);
+
+    buf = kzalloc(512, GFP_KERNEL);
+
+    for (int i = 0 ; i < 512 ; i += 2) {
+        buf[i] = 0xca;
+        buf[i + 1] = 0xfe;
+    }
+
+    writeq(512, data->bar.mmio + CAFE_DMA_SZ * 8);
+    writeq(virt_to_phys(buf), data->bar.mmio + CAFE_DMA_SRC * 8);
+    writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
+
+    kfree(buf);
+    return 0;
 }
