@@ -1,4 +1,4 @@
 config CAFE
     bool
     default y if TEST_DEVICES
-    depends on PCI && MSI_NONBROKEN
+    depends on PCI_EXPRESS && MSI_NONBROKEN

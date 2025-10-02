@@ -9,6 +9,7 @@ CDROM=$ROOT/images/isos/debian-13.1.0-amd64-netinst.iso
 SHARED=$ROOT
 
 $QEMU_BIN                                                   \
+  -M q35                                                    \
   -accel kvm                                                \
   -smp 8                                                    \
   -m 8G                                                     \
