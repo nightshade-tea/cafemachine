@@ -3,4 +3,5 @@ system_ss.add(when: 'CONFIG_CAFE', if_true: files(
       'mmio.c',
       'irq.c',
       'dma.c',
+      'dump.c',
 ))

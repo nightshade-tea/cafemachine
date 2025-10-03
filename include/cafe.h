@@ -8,15 +8,22 @@
 #define CAFE_MMIO_NAME "cafe-mmio"
 #define CAFE_MMIO_SIZE 4096
 #define CAFE_MMIO_BAR_NUM 0
+#define CAFE_REG_SZ 8
 
 #define CAFE_IRQ_MAX_VECTORS 32
-#define CAFE_HW_MSI_VECTOR_CNT 1
 
-#define CAFE_DMA_BUF_SZ 0x1000
+enum {
+  CAFE_INT_DUMP_READY,
+  CAFE_HW_MSI_VECTOR_CNT
+};
 
-enum cafe_cmd {
-  CAFE_DMA_READ,
+#define CAFE_DMA_BUF_SZ 0x10000
+#define CAFE_DMA_DUMP_EXT ".dat"
+
+enum {
+  CAFE_DMA_READ = 1,
   CAFE_DMA_WRITE,
+  CAFE_DUMP_DMA_BUF,
 };
 
 enum {
@@ -24,6 +31,8 @@ enum {
   CAFE_DMA_SRC,
   CAFE_DMA_DST,
   CAFE_DMA_SZ,
+  CAFE_DUMP_FILENAME,
+  CAFE_LOWER_INT, /* write the interrupt number to lower */
   REG_MAX_NUM,
 };
 
