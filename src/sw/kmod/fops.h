@@ -7,4 +7,6 @@
 
 int cafe_mmap(struct file *f, struct vm_area_struct *vma);
 
+long cafe_ioctl(struct file *f, unsigned int cmd, unsigned int arg);
+
 #endif /* _CAFE_FOPS_H_ */

@@ -33,7 +33,12 @@ enum {
   CAFE_DMA_SZ,
   CAFE_DUMP_FILENAME,
   CAFE_LOWER_INT, /* write the interrupt number to lower */
-  REG_MAX_NUM,
+  REG_MAX_NUM
+};
+
+enum {
+  CAFE_IOCTL_DUMP_MEM,
+  CAFE_IOCTL_CNT
 };
 
 #endif /* CAFE_H */

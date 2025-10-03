@@ -3,6 +3,10 @@
 #include "data.h"
 #include "cafe.h"
 
+static void cafe_dump_mem(/* todo */) {
+    return;
+}
+
 int cafe_mmap(struct file *f, struct vm_area_struct *vma) {
     struct pci_dev *pdev;
     struct device *dev;
@@ -37,4 +41,29 @@ err_exit:
 
     pr_err("cafe_mmap() failed: %pe\n", ERR_PTR(err));
     return err;
+}
+
+long cafe_ioctl(struct file *f, unsigned int cmd, unsigned int arg) {
+    struct pci_dev *pdev;
+    struct device *dev;
+    struct cafe_dev_data *data;
+    int err;
+
+    if (cmd >= CAFE_IOCTL_CNT)
+        return -EINVAL;
+
+    if (!(pdev = cafe_minor_to_dev(iminor(f->f_inode)))) {
+        pr_err("cafe_minor_to_dev() returned NULL! minor does not correspond"
+                "to any device\n");
+        return -ENODEV;
+    }
+
+    dev = &pdev->dev;
+    data = pci_get_drvdata(pdev);
+
+    switch (cmd) {
+    case CAFE_IOCTL_DUMP_MEM:
+        /* todo */
+        break;
+    }
 }
