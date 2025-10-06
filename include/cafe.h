@@ -35,9 +35,6 @@ enum {
 
 enum { CAFE_IOCTL_DUMP_MEM, CAFE_IOCTL_CNT };
 
-enum {
-    CAFE_MUTEX_DMA,
-    CAFE_MUTEX_CNT,
-};
+enum { CAFE_WAIT_DMA, CAFE_WAIT_CNT };
 
 #endif /* CAFE_H */
