@@ -15,10 +15,12 @@ static void cafe_cmd (CafeState *dev) {
   switch (dev->r[CAFE_CMD]) {
     case CAFE_DMA_READ:
       cafe_dma_read (dev, dev->dma_buf);
+      cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
       break;
 
     case CAFE_DMA_WRITE:
       cafe_dma_write (dev, dev->dma_buf);
+      cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
       break;
 
     case CAFE_DUMP_DMA_BUF:

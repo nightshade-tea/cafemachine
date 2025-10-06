@@ -12,7 +12,7 @@ static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
     dev = &pdev->dev;
     dev_data = pci_get_drvdata(pdev);
 
-    dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
+//  dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
 
     mutex_unlock(&dev_data->mutex[CAFE_MUTEX_DMA]);
 

@@ -3,17 +3,22 @@
 #include "data.h"
 #include "cafe.h"
 
-static void cafe_dump_mem(struct pci_dev *pdev) {
+static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
     struct device *dev;
     struct cafe_dev_data *data;
-    unsigned long ram_size = totalram_pages() << PAGE_SHIFT;
+    unsigned long ram_size;
 
     dev = &pdev->dev;
     data = pci_get_drvdata(pdev);
+    ram_size = totalram_pages() << PAGE_SHIFT;
+
+    dev_info(dev, "cafe_dump_mem(): writing %lu bytes to %s\n", ram_size, (char *) &filename);
+
+    writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
+    writeq(filename, data->bar.mmio + CAFE_DUMP_FILENAME * 8);
 
     for (int i = 0; i < ram_size; i += CAFE_DMA_BUF_SZ) {
       mutex_lock(&data->mutex[CAFE_MUTEX_DMA]);
-      writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
       writeq(i, data->bar.mmio + CAFE_DMA_SRC * 8);
       writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
 
@@ -79,7 +84,7 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
 
     switch (cmd) {
     case CAFE_IOCTL_DUMP_MEM:
-        cafe_dump_mem(pdev);
+        cafe_dump_mem(pdev, arg);
         break;
     }
 

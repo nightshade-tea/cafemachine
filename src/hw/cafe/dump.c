@@ -14,6 +14,8 @@ int cafe_dump_buf(CafeState *dev, void *buf) {
       sizeof(CAFE_DMA_DUMP_EXT));
   filename[CAFE_REG_SZ + sizeof(CAFE_DMA_DUMP_EXT)] = '\0';
 
+  cafe_log("dump requested for %s\n", filename);
+
   if (!(f = fopen(filename, "ab+"))) {
     cafe_log("failed to open %s, aborting dump\n", filename);
     return -1;
