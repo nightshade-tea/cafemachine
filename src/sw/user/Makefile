@@ -1,4 +1,4 @@
-MAIN_PROGRAMS    := test_mmap test_dma
+MAIN_PROGRAMS    := test_mmap test_dma test_dump
 CFLAGS           := -Wall -Wextra -g -I../../../include
 
 all: $(MAIN_PROGRAMS)

@@ -13,11 +13,11 @@
 #define CAFE_IRQ_MAX_VECTORS 32
 
 enum {
-  CAFE_INT_DUMP_READY,
+  CAFE_INT_DMA_BUF_AVAILABLE,
   CAFE_HW_MSI_VECTOR_CNT
 };
 
-#define CAFE_DMA_BUF_SZ 0x10000
+#define CAFE_DMA_BUF_SZ (2 * 0x100000) /* 2 MiB */
 #define CAFE_DMA_DUMP_EXT ".dat"
 
 enum {
@@ -39,6 +39,11 @@ enum {
 enum {
   CAFE_IOCTL_DUMP_MEM,
   CAFE_IOCTL_CNT
+};
+
+enum {
+  CAFE_MUTEX_DMA,
+  CAFE_MUTEX_CNT,
 };
 
 #endif /* CAFE_H */

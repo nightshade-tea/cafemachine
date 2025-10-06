@@ -3,7 +3,24 @@
 #include "data.h"
 #include "cafe.h"
 
-static void cafe_dump_mem(/* todo */) {
+static void cafe_dump_mem(struct pci_dev *pdev) {
+    struct device *dev;
+    struct cafe_dev_data *data;
+    unsigned long ram_size = totalram_pages() << PAGE_SHIFT;
+
+    dev = &pdev->dev;
+    data = pci_get_drvdata(pdev);
+
+    for (int i = 0; i < ram_size; i += CAFE_DMA_BUF_SZ) {
+      mutex_lock(&data->mutex[CAFE_MUTEX_DMA]);
+      writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
+      writeq(i, data->bar.mmio + CAFE_DMA_SRC * 8);
+      writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
+
+      mutex_lock(&data->mutex[CAFE_MUTEX_DMA]);
+      writeq(CAFE_DUMP_DMA_BUF, data->bar.mmio + CAFE_CMD * 8);
+    }
+
     return;
 }
 
@@ -43,11 +60,10 @@ err_exit:
     return err;
 }
 
-long cafe_ioctl(struct file *f, unsigned int cmd, unsigned int arg) {
+long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
     struct pci_dev *pdev;
     struct device *dev;
     struct cafe_dev_data *data;
-    int err;
 
     if (cmd >= CAFE_IOCTL_CNT)
         return -EINVAL;
@@ -63,7 +79,15 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned int arg) {
 
     switch (cmd) {
     case CAFE_IOCTL_DUMP_MEM:
-        /* todo */
+        cafe_dump_mem(pdev);
         break;
     }
+
+    return 0;
+}
+
+void cafe_init_fops(struct file_operations *fops) {
+    fops->owner = THIS_MODULE;
+    fops->mmap = cafe_mmap;
+    fops->unlocked_ioctl = cafe_ioctl;
 }

@@ -23,7 +23,7 @@ static void cafe_cmd (CafeState *dev) {
 
     case CAFE_DUMP_DMA_BUF:
       cafe_dump_buf(dev, dev->dma_buf);
-      cafe_irq_raise(dev, CAFE_INT_DUMP_READY);
+      cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
       break;
   }
 
