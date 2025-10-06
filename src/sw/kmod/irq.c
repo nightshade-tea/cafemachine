@@ -2,7 +2,6 @@
 #include "data.h"
 #include "cafe.h"
 
-
 static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
     struct pci_dev *pdev;
     struct device *dev;
@@ -14,7 +13,7 @@ static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
 
 //  dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
 
-    mutex_unlock(&dev_data->mutex[CAFE_MUTEX_DMA]);
+    complete(&dev_data->devop_done[CAFE_WAIT_DMA]);
 
     writeq(CAFE_INT_DMA_BUF_AVAILABLE, dev_data->bar.mmio + CAFE_LOWER_INT * 8);
 

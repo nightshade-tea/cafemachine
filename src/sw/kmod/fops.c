@@ -17,14 +17,33 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
     writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
     writeq(filename, data->bar.mmio + CAFE_DUMP_FILENAME * 8);
 
-    for (int i = 0; i < ram_size; i += CAFE_DMA_BUF_SZ) {
-      mutex_lock(&data->mutex[CAFE_MUTEX_DMA]);
-      writeq(i, data->bar.mmio + CAFE_DMA_SRC * 8);
+    for (int i = 0; i < (ram_size / CAFE_DMA_BUF_SZ); i++) {
+      writeq(i * CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SRC * 8);
       writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
 
-      mutex_lock(&data->mutex[CAFE_MUTEX_DMA]);
+      wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
+      reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
+
       writeq(CAFE_DUMP_DMA_BUF, data->bar.mmio + CAFE_CMD * 8);
+
+      wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
+      reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
     }
+
+    // todo write a function bruh
+    /* sapataria */
+      writeq(ram_size % CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
+      writeq(ram_size - (ram_size % CAFE_DMA_BUF_SZ), data->bar.mmio + CAFE_DMA_SRC * 8);
+      writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
+
+      wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
+      reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
+
+      writeq(CAFE_DUMP_DMA_BUF, data->bar.mmio + CAFE_CMD * 8);
+
+      wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
+      reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
+      /* ------------------------ */
 
     return;
 }

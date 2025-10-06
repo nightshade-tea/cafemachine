@@ -42,8 +42,8 @@ enum {
 };
 
 enum {
-  CAFE_MUTEX_DMA,
-  CAFE_MUTEX_CNT,
+  CAFE_WAIT_DMA,
+  CAFE_WAIT_CNT
 };
 
 #endif /* CAFE_H */

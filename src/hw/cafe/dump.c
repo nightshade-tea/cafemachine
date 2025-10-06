@@ -21,7 +21,7 @@ int cafe_dump_buf(CafeState *dev, void *buf) {
     return -1;
   }
 
-  if (fwrite(buf, dev->r[CAFE_DMA_SZ], 1, f) < dev->r[CAFE_DMA_SZ]) {
+  if (fwrite(buf, dev->r[CAFE_DMA_SZ], 1, f) != 1) {
     cafe_log("failed to write to %s, aborting dump\n", filename);
     fclose(f);
     return -1;
