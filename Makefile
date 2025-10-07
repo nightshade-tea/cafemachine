@@ -1,9 +1,10 @@
+SRC_DIR := src/hw
 QEMU_DIR := qemu
 BUILD_DIR := $(QEMU_DIR)/build
 PATCH_MARKER := $(QEMU_DIR)/.patched
 BUILD_TARGETS := x86_64-softmmu
 
-build: patch
+build: patch format
 	@if [ ! -d $(BUILD_DIR) ]; then \
 		mkdir -p $(BUILD_DIR) && \
 		cd $(BUILD_DIR) && \
@@ -22,7 +23,7 @@ patch:
 		echo "patch already applied ($(PATCH_MARKER) exists)"; \
 	fi
 
-run:
+run: build
 	bash ./scripts/start.sh
 
 clean:
@@ -36,4 +37,7 @@ prune:
 deinit:
 	git submodule deinit -f $(QEMU_DIR)
 
-.PHONY: build patch run clean prune deinit
+format:
+	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
+
+.PHONY: build patch run clean prune deinit format

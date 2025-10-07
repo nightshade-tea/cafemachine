@@ -1,9 +1,12 @@
 MAIN_PROGRAMS    := test_mmap test_dma test_dump
 CFLAGS           := -Wall -Wextra -g -I../../../include
 
-all: $(MAIN_PROGRAMS)
+all: format $(MAIN_PROGRAMS)
 
 clean:
 	rm -rf $(MAIN_PROGRAMS)
 
-.PHONY: all clean
+format:
+	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
+
+.PHONY: all clean format
