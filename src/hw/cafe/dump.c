@@ -1,8 +1,8 @@
-#include <string.h>
-#include <stdio.h>
 #include "dump.h"
 #include "cafe.h"
 #include "cafe_log.h"
+#include <stdio.h>
+#include <string.h>
 
 int cafe_dump_buf(CafeState *dev, void *buf) {
   char filename[CAFE_REG_SZ + sizeof(CAFE_DMA_DUMP_EXT) + 1];
@@ -10,8 +10,7 @@ int cafe_dump_buf(CafeState *dev, void *buf) {
 
   /* assemble filename */
   memcpy(filename, (char *)&dev->r[CAFE_DUMP_FILENAME], CAFE_REG_SZ);
-  memcpy(filename + CAFE_REG_SZ, CAFE_DMA_DUMP_EXT,
-      sizeof(CAFE_DMA_DUMP_EXT));
+  memcpy(filename + CAFE_REG_SZ, CAFE_DMA_DUMP_EXT, sizeof(CAFE_DMA_DUMP_EXT));
   filename[CAFE_REG_SZ + sizeof(CAFE_DMA_DUMP_EXT)] = '\0';
 
   cafe_log("dump requested for %s\n", filename);

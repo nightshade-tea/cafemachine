@@ -1,8 +1,8 @@
 #ifndef _CAFE_FOPS_H_
 #define _CAFE_FOPS_H_
 
-#include <linux/module.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/pci.h>
 
 void cafe_init_fops(struct file_operations *fops);

@@ -1,8 +1,8 @@
 #ifndef _CAFE_DATA_H_
 #define _CAFE_DATA_H_
 
-#include <linux/slab.h>
 #include "cafe.h"
+#include <linux/slab.h>
 
 struct cafe_bar {
   u64 start;
