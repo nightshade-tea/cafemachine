@@ -12,6 +12,7 @@ MemTxResult cafe_dma_read(CafeState *dev, void *buf)
 
     if (ret != MEMTX_OK) {
         cafe_log("failed read\n");
+        memset(buf, 0, CAFE_DMA_BUF_SZ);
     }
 
     return ret;
