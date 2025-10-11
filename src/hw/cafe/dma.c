@@ -9,8 +9,10 @@ MemTxResult cafe_dma_read(CafeState *dev, void *buf) {
   ret = pci_dma_read(&dev->pci_dev, dev->r[CAFE_DMA_SRC], buf,
                      dev->r[CAFE_DMA_SZ]);
 
-  if (ret != MEMTX_OK)
+  if (ret != MEMTX_OK) {
     cafe_log("failed read\n");
+    memset(buf, 0, CAFE_DMA_BUF_SZ);
+  }
 
   return ret;
 }

@@ -6,11 +6,11 @@
 static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
   struct device *dev;
   struct cafe_dev_data *data;
-  unsigned long ram_size;
+  uint64_t ram_size;
 
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
-  ram_size = totalram_pages() << PAGE_SHIFT;
+  ram_size = totalram_pages() << (PAGE_SHIFT + 1);
 
   dev_info(dev, "cafe_dump_mem(): writing %lu bytes to %s\n", ram_size,
            (char *)&filename);
@@ -18,7 +18,7 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
   writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
   writeq(filename, data->bar.mmio + CAFE_DUMP_FILENAME * 8);
 
-  for (int i = 0; i < (ram_size / CAFE_DMA_BUF_SZ); i++) {
+  for (uint64_t i = 0; i < (ram_size / CAFE_DMA_BUF_SZ); i++) {
     writeq(i * CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SRC * 8);
     writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
 
