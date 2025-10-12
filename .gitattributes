@@ -1,1 +1,1 @@
-volatility/** filter=lfs diff=lfs merge=lfs -text
+volatility/*/** filter=lfs diff=lfs merge=lfs -text
