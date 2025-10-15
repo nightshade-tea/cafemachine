@@ -1,8 +1,8 @@
 #ifndef CAFE_IRQ_H
 #define CAFE_IRQ_H
 
-#include "cafe_device.h"
 #include "qemu/osdep.h"
+#include "cafe_device.h"
 #include "hw/pci/pci.h"
 
 void cafe_irq_init(CafeState *dev, Error **errp);

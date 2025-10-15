@@ -1,10 +1,10 @@
+#include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/mman.h>
-#include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 int main(int argc, char **argv) {
   uint64_t *mem;

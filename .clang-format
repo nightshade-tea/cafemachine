@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+
+# if "qemu/osdep.h" is not the first thing to be included, qemu breaks :(
+
+IncludeCategories:
+  - Regex:    '^"qemu/osdep.h"'
+    Priority: -1

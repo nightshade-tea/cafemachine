@@ -1,6 +1,7 @@
 #ifndef _CAFE_DATA_H_
 #define _CAFE_DATA_H_
 
+#include "cafe.h"
 #include <linux/slab.h>
 
 struct cafe_bar {
@@ -13,6 +14,7 @@ struct cafe_bar {
 struct cafe_dev_data {
   struct cafe_bar bar;
   struct device *chrdev;
+  struct completion devop_done[CAFE_WAIT_CNT];
   dev_t dev_num;
 };
 

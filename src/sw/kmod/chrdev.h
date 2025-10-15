@@ -1,8 +1,8 @@
 #ifndef _CAFE_CHRDEV_H_
 #define _CAFE_CHRDEV_H_
 
-#include <linux/module.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/pci.h>
 
 int cafe_chrdev_init(void);

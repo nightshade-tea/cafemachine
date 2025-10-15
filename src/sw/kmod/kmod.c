@@ -1,14 +1,17 @@
 #include "kmod.h"
-#include "data.h"
-#include "mmio.h"
-#include "chrdev.h"
-#include "irq.h"
-#include "dma.h"
 #include "cafe.h"
+#include "chrdev.h"
+#include "data.h"
+#include "dma.h"
+#include "irq.h"
+#include "mmio.h"
+#include "utils.h"
+
+phys_addr_t max_ram_addr;
 
 /* specifies which devices the driver supports */
 static struct pci_device_id cafe_id_table[] = {
-    { PCI_DEVICE(CAFE_VENDOR_ID, CAFE_DEVICE_ID) },
+    {PCI_DEVICE(CAFE_VENDOR_ID, CAFE_DEVICE_ID)},
     {},
 };
 
@@ -19,144 +22,147 @@ static struct pci_device_id cafe_id_table[] = {
 MODULE_DEVICE_TABLE(pci, cafe_id_table);
 
 static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
-    struct cafe_dev_data *data;
-    struct device *dev;
-    int err;
+  struct cafe_dev_data *data;
+  struct device *dev;
+  int err;
 
-    dev = &pdev->dev;
+  dev = &pdev->dev;
 
-    dev_info(dev, "found cafe device\n");
+  dev_info(dev, "found cafe device\n");
 
-    if (!(data = cafe_dev_data_alloc())) {
-        err = -ENOMEM;
-        dev_err (dev, "cafe_dev_data_alloc() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_dev_data_alloc;
-    }
+  if (!(data = cafe_dev_data_alloc())) {
+    err = -ENOMEM;
+    dev_err(dev, "cafe_dev_data_alloc() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_dev_data_alloc;
+  }
 
-    pci_set_drvdata (pdev, data);
+  pci_set_drvdata(pdev, data);
 
-    if ((err = pci_enable_device(pdev))) {
-        dev_err (dev, "pci_enable_device() failed: %pe\n", ERR_PTR(err));
-        goto err_pci_enable_device;
-    }
+  if ((err = pci_enable_device(pdev))) {
+    dev_err(dev, "pci_enable_device() failed: %pe\n", ERR_PTR(err));
+    goto err_pci_enable_device;
+  }
 
-    /* Enable bus mastering for DMA and MSI */
+  /* Enable bus mastering for DMA and MSI */
 
-    pci_set_master(pdev);
+  pci_set_master(pdev);
 
-    /* Enable Memory-Write-Invalidate for DMA */
+  /* Enable Memory-Write-Invalidate for DMA */
 
-    if ((err = pci_set_mwi(pdev))) {
-        dev_err (dev, "pci_set_mwi() failed: %pe\n", ERR_PTR(err));
-        goto err_pci_set_mwi;
-    }
+  if ((err = pci_set_mwi(pdev))) {
+    dev_err(dev, "pci_set_mwi() failed: %pe\n", ERR_PTR(err));
+    goto err_pci_set_mwi;
+  }
 
-    /* The driver can only determine MMIO and IO Port resource availability
-     * _after_ calling pci_enable_device(). */
+  /* The driver can only determine MMIO and IO Port resource availability
+   * _after_ calling pci_enable_device(). */
 
-    if ((err = cafe_mmio_enable(pdev))) {
-        dev_err (dev, "cafe_mmio_enable() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_mmio_enable;
-    }
+  if ((err = cafe_mmio_enable(pdev))) {
+    dev_err(dev, "cafe_mmio_enable() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_mmio_enable;
+  }
 
-    if ((err = cafe_chrdev_create(pdev))) {
-        dev_err (dev, "cafe_chrdev_create() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_chrdev_create;
-    }
+  if ((err = cafe_chrdev_create(pdev))) {
+    dev_err(dev, "cafe_chrdev_create() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_chrdev_create;
+  }
 
-    if ((err = cafe_irq_enable(pdev))) {
-        dev_err (dev, "cafe_irq_enable() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_irq_enable;
-    }
+  if ((err = cafe_irq_enable(pdev))) {
+    dev_err(dev, "cafe_irq_enable() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_irq_enable;
+  }
 
-    if ((err = cafe_dma_enable(pdev))) {
-        dev_err (dev, "cafe_dma_enable() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_dma_enable;
-    }
+  if ((err = cafe_dma_enable(pdev))) {
+    dev_err(dev, "cafe_dma_enable() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_dma_enable;
+  }
 
-    dev_info(dev, "cafe device initialized\n");
-    return 0;
+  dev_info(dev, "cafe device initialized\n");
+  return 0;
 
 err_cafe_dma_enable:
-    cafe_irq_disable(pdev);
+  cafe_irq_disable(pdev);
 
 err_cafe_irq_enable:
-    cafe_chrdev_destroy(pdev);
+  cafe_chrdev_destroy(pdev);
 
 err_cafe_chrdev_create:
-    cafe_mmio_disable(pdev);
+  cafe_mmio_disable(pdev);
 
 err_pci_set_mwi:
 err_cafe_mmio_enable:
-    pci_disable_device(pdev);
+  pci_disable_device(pdev);
 
 err_pci_enable_device:
-    cafe_dev_data_free(pci_get_drvdata(pdev));
-    pci_set_drvdata(pdev, NULL);
+  cafe_dev_data_free(pci_get_drvdata(pdev));
+  pci_set_drvdata(pdev, NULL);
 
 err_cafe_dev_data_alloc:
 
-    dev_err (dev, "failed to initialize cafe device!\n");
-    return err;
+  dev_err(dev, "failed to initialize cafe device!\n");
+  return err;
 }
 
 static void cafe_remove(struct pci_dev *pdev) {
-    struct device *dev;
+  struct device *dev;
 
-    dev = &pdev->dev;
+  dev = &pdev->dev;
 
-    cafe_irq_disable(pdev);
+  cafe_irq_disable(pdev);
 
-    /* drivers should call pci_release_region() AFTER calling
-     * pci_disable_device(). The idea is to prevent two devices colliding on
-     * the same address range. */
+  /* drivers should call pci_release_region() AFTER calling
+   * pci_disable_device(). The idea is to prevent two devices colliding on
+   * the same address range. */
 
-    pci_disable_device(pdev);
-    cafe_chrdev_destroy(pdev);
-    cafe_mmio_disable(pdev);
+  pci_disable_device(pdev);
+  cafe_chrdev_destroy(pdev);
+  cafe_mmio_disable(pdev);
 
-    cafe_dev_data_free(pci_get_drvdata(pdev));
-    pci_set_drvdata(pdev, NULL);
+  cafe_dev_data_free(pci_get_drvdata(pdev));
+  pci_set_drvdata(pdev, NULL);
 
-    dev_info(dev, "cafe device removed\n");
+  dev_info(dev, "cafe device removed\n");
 }
 
 static struct pci_driver cafe_pci_driver = {
     .name = CAFE_HW_NAME,
     .id_table = cafe_id_table,
     .probe = cafe_probe,
-    .remove= cafe_remove,
+    .remove = cafe_remove,
 };
 
 static int __init cafe_init(void) {
-    int err;
+  int err;
 
-    if ((err = cafe_chrdev_init()) < 0) {
-        pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));
-        goto err_cafe_chrdev_init;
-    }
+  max_ram_addr = cafe_find_max_ram_addr();
+  pr_info("cafe_find_max_ram_addr(): max ram addr %llu\n", max_ram_addr);
 
-    if ((err = pci_register_driver(&cafe_pci_driver))) {
-        pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
-        goto err_pci_register_driver;
-    }
+  if ((err = cafe_chrdev_init()) < 0) {
+    pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));
+    goto err_cafe_chrdev_init;
+  }
 
-    printk("cafe driver loaded\n");
-    return 0;
+  if ((err = pci_register_driver(&cafe_pci_driver))) {
+    pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
+    goto err_pci_register_driver;
+  }
+
+  printk("cafe driver loaded\n");
+  return 0;
 
 err_pci_register_driver:
-    cafe_chrdev_deinit();
+  cafe_chrdev_deinit();
 
 err_cafe_chrdev_init:
 
-    pr_err("failed to load cafe driver!\n");
-    return err;
+  pr_err("failed to load cafe driver!\n");
+  return err;
 }
 
 static void cafe_exit(void) {
-    pci_unregister_driver(&cafe_pci_driver);
-    cafe_chrdev_deinit();
-    printk("cafe driver unloaded\n");
+  pci_unregister_driver(&cafe_pci_driver);
+  cafe_chrdev_deinit();
+  printk("cafe driver unloaded\n");
 }
 
 module_init(cafe_init);
