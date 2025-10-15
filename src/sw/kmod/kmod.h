@@ -13,4 +13,6 @@ MODULE_DESCRIPTION("Driver for a cafemachine device");
 MODULE_AUTHOR("phfr24 <phfr24@inf.ufpr.br>");
 MODULE_AUTHOR("dcr23 <dcr23@inf.ufpr.br>");
 
+extern phys_addr_t max_ram_addr;
+
 #endif /* _CAFE_KMOD_H_ */

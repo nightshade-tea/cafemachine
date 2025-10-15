@@ -1,0 +1,14 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+InsertBraces: true
+ForEachMacros: [LIST_FOREACH, QLIST_FOREACH, QTAILQ_FOREACH]
+
+# if "qemu/osdep.h" is not the first thing to be included, qemu breaks :(
+
+IncludeCategories:
+  - Regex:    '^"qemu/osdep.h"'
+    Priority: -1

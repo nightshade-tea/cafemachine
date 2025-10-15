@@ -1,7 +1,9 @@
 #include "mmio.h"
 #include "cafe_log.h"
 #include "dma.h"
+#include "dump.h"
 #include "irq.h"
+#include <sys/param.h>
 
 #define ACCESS_SIZE 8
 #define VALID_MIN_ACCESS_SIZE ACCESS_SIZE
@@ -14,10 +16,17 @@ static void cafe_cmd(CafeState *dev)
     switch (dev->r[CAFE_CMD]) {
     case CAFE_DMA_READ:
         cafe_dma_read(dev, dev->dma_buf);
+        cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
         break;
 
     case CAFE_DMA_WRITE:
         cafe_dma_write(dev, dev->dma_buf);
+        cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
+        break;
+
+    case CAFE_DUMP_DMA_BUF:
+        cafe_dump_buf(dev, dev->dma_buf);
+        cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
         break;
     }
 
@@ -41,6 +50,9 @@ static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size)
 
     case CAFE_DMA_SZ:
         return dev->r[CAFE_DMA_SZ];
+
+    case CAFE_DUMP_FILENAME:
+        return dev->r[CAFE_DUMP_FILENAME];
     }
 
     return 0LL;
@@ -69,7 +81,15 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
         break;
 
     case CAFE_DMA_SZ:
-        dev->r[CAFE_DMA_SZ] = data;
+        dev->r[CAFE_DMA_SZ] = MIN(data, CAFE_DMA_BUF_SZ);
+        break;
+
+    case CAFE_DUMP_FILENAME:
+        dev->r[CAFE_DUMP_FILENAME] = data;
+        break;
+
+    case CAFE_LOWER_INT:
+        cafe_irq_lower(dev, data);
         break;
     }
 }

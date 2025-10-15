@@ -1,18 +1,11 @@
 #ifndef CAFE_DEVICE_H
 #define CAFE_DEVICE_H
 
-/* todo: remove unneeded includes */
 #include "qemu/osdep.h"
 #include "cafe.h"
 #include "hw/pci/msi.h"
 #include "hw/pci/pci.h"
-#include "qapi/visitor.h"
 #include "qemu/log.h"
-#include "qemu/main-loop.h" /* iothread mutex */
-#include "qemu/module.h"
-#include "qemu/timer.h"
-#include "qemu/units.h"
-#include "qom/object.h"
 
 #define TYPE_CAFE_DEVICE CAFE_HW_NAME
 

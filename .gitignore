@@ -2,3 +2,4 @@
 **/*.qcow2
 **/*.iso
 qemu-debug.log
+cafdump

@@ -11,8 +11,8 @@ SHARED=$ROOT
 $QEMU_BIN                                                   \
   -M q35                                                    \
   -accel kvm                                                \
-  -smp 8                                                    \
-  -m 8G                                                     \
+  -smp 16                                                   \
+  -m 2G                                                     \
   -boot c                                                   \
   -drive file=$DRIVE,format=qcow2,if=virtio,cache=writeback \
   -netdev user,id=net0                                      \
