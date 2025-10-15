@@ -5,6 +5,9 @@
 #include "dma.h"
 #include "irq.h"
 #include "mmio.h"
+#include "utils.h"
+
+phys_addr_t max_ram_addr;
 
 /* specifies which devices the driver supports */
 static struct pci_device_id cafe_id_table[] = {
@@ -130,6 +133,9 @@ static struct pci_driver cafe_pci_driver = {
 
 static int __init cafe_init(void) {
   int err;
+
+  max_ram_addr = cafe_find_max_ram_addr();
+  pr_info("cafe_find_max_ram_addr(): max ram addr %llu\n", max_ram_addr);
 
   if ((err = cafe_chrdev_init()) < 0) {
     pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));

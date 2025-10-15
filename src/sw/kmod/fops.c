@@ -2,17 +2,19 @@
 #include "cafe.h"
 #include "chrdev.h"
 #include "data.h"
+#include "kmod.h"
+#include <linux/ioport.h>
 
 static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
   struct device *dev;
   struct cafe_dev_data *data;
-  uint64_t ram_size;
+  phys_addr_t ram_size;
 
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
-  ram_size = totalram_pages() << (PAGE_SHIFT + 1);
+  ram_size = max_ram_addr;
 
-  dev_info(dev, "cafe_dump_mem(): writing %lu bytes to %s\n", ram_size,
+  dev_info(dev, "cafe_dump_mem(): writing %llu bytes to %s\n", ram_size,
            (char *)&filename);
 
   writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);

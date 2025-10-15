@@ -1,5 +1,5 @@
 obj-m += cafe.o
-cafe-objs += kmod.o data.o mmio.o chrdev.o fops.o irq.o dma.o
+cafe-objs += kmod.o data.o mmio.o chrdev.o fops.o irq.o dma.o utils.o
 ccflags-y := -I$(src)/../../../include
 
 all: format
