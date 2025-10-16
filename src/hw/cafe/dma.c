@@ -1,23 +1,22 @@
 #include "dma.h"
 #include "cafe_log.h"
 
-MemTxResult cafe_dma_read(CafeState *dev, void *buf) {
-  MemTxResult ret;
-  cafe_log("got read of size %lu from %lu \n", dev->r[CAFE_DMA_SZ],
-           dev->r[CAFE_DMA_SRC]);
+MemTxResult cafe_dma_read(CafeState *dev) {
+  MemTxResult err;
 
-  ret = pci_dma_read(&dev->pci_dev, dev->r[CAFE_DMA_SRC], buf,
-                     dev->r[CAFE_DMA_SZ]);
+  err = pci_dma_read(&dev->pci_dev, dev->reg[CAFE_DMA_SRC], dev->dma_buf,
+                     dev->reg[CAFE_DMA_SZ]);
 
-  if (ret != MEMTX_OK) {
+  /* zero dma_buf on error */
+  if (err != MEMTX_OK) {
     cafe_log("failed read\n");
-    memset(buf, 0, CAFE_DMA_BUF_SZ);
+    memset(dev->dma_buf, 0, CAFE_DMA_BUF_SZ);
   }
 
-  return ret;
+  return err;
 }
 
-MemTxResult cafe_dma_write(CafeState *dev, void *buf) {
-  return pci_dma_write(&dev->pci_dev, dev->r[CAFE_DMA_DST], buf,
-                       dev->r[CAFE_DMA_SZ]);
+MemTxResult cafe_dma_write(CafeState *dev) {
+  return pci_dma_write(&dev->pci_dev, dev->reg[CAFE_DMA_DST], dev->dma_buf,
+                       dev->reg[CAFE_DMA_SZ]);
 }
