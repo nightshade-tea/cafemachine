@@ -20,7 +20,7 @@ static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
   return IRQ_HANDLED;
 }
 
-static irqreturn_t (*const handlers[CAFE_HW_MSI_VECTOR_CNT])(int, void *) = {
+static irqreturn_t (*const handlers[CAFE_INT_VECTOR_CNT])(int, void *) = {
     cafe_handler_dma_buf_available};
 
 int cafe_irq_enable(struct pci_dev *pdev) {
@@ -30,13 +30,13 @@ int cafe_irq_enable(struct pci_dev *pdev) {
 
   dev = &pdev->dev;
 
-  if ((err = pci_alloc_irq_vectors(pdev, CAFE_HW_MSI_VECTOR_CNT,
-                                   CAFE_HW_MSI_VECTOR_CNT, PCI_IRQ_MSI)) < 0) {
+  if ((err = pci_alloc_irq_vectors(pdev, CAFE_INT_VECTOR_CNT,
+                                   CAFE_INT_VECTOR_CNT, PCI_IRQ_MSI)) < 0) {
     dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n", ERR_PTR(err));
     goto err_pci_alloc_irq_vectors;
   }
 
-  for (int i = 0; i < CAFE_HW_MSI_VECTOR_CNT; i++) {
+  for (int i = 0; i < CAFE_INT_VECTOR_CNT; i++) {
     if ((irqn = pci_irq_vector(pdev, i)) < 0) {
       err = irqn;
       dev_err(dev, "pci_irq_vector() failed: %pe\n", ERR_PTR(err));

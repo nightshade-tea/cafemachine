@@ -18,7 +18,7 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
            (char *)&filename);
 
   writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
-  writeq(filename, data->bar.mmio + CAFE_DUMP_FILENAME * 8);
+  writeq(filename, data->bar.mmio + CAFE_DUMP_FILE * 8);
 
   for (uint64_t i = 0; i < (ram_size / CAFE_DMA_BUF_SZ); i++) {
     writeq(i * CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SRC * 8);
