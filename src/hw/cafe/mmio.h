@@ -3,7 +3,7 @@
 
 #include "cafe_device.h"
 
-/* registers read/write callbacks and sets constraints */
+/* defines read/write callbacks and sets access constraints */
 extern const MemoryRegionOps cafe_mmio_ops;
 
 /* initializes CafeState's mmio MemoryRegion and register BAR */
