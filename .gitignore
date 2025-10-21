@@ -1,5 +1,5 @@
 **/.*.swp
 **/*.qcow2
 **/*.iso
+**/*.dat
 qemu-debug.log
-cafdump

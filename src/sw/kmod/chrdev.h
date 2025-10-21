@@ -9,6 +9,7 @@ int cafe_chrdev_init(void);
 
 void cafe_chrdev_deinit(void);
 
+/* create /dev/cafe file for a device */
 int cafe_chrdev_create(struct pci_dev *pdev);
 
 void cafe_chrdev_destroy(struct pci_dev *pdev);
