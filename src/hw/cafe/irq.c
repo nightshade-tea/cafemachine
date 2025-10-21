@@ -3,7 +3,8 @@
 #include "cafe_log.h"
 
 void cafe_irq_init(CafeState *dev, Error **errp) {
-  if (msi_init(&dev->pci_dev, 0, CAFE_HW_MSI_VECTOR_CNT, true, false, errp))
+  /* set device msi capability */
+  if (msi_init(&dev->pci_dev, 0, CAFE_INT_VECTOR_CNT, true, false, errp))
     cafe_log("failed to initialize msi\n");
   cafe_log("irq initialized\n");
 }
@@ -15,7 +16,7 @@ void cafe_irq_deinit(CafeState *dev) {
 }
 
 void cafe_irq_raise(CafeState *dev, unsigned int vector) {
-  if (vector >= CAFE_HW_MSI_VECTOR_CNT)
+  if (vector >= CAFE_INT_VECTOR_CNT)
     return;
 
   dev->irq[vector] = true;
@@ -25,7 +26,7 @@ void cafe_irq_raise(CafeState *dev, unsigned int vector) {
 }
 
 void cafe_irq_lower(CafeState *dev, unsigned int vector) {
-  if (vector >= CAFE_HW_MSI_VECTOR_CNT)
+  if (vector >= CAFE_INT_VECTOR_CNT)
     return;
 
   dev->irq[vector] = false;

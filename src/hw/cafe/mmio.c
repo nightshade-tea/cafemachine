@@ -5,90 +5,87 @@
 #include "irq.h"
 #include <sys/param.h>
 
-#define ACCESS_SIZE 8
-#define VALID_MIN_ACCESS_SIZE ACCESS_SIZE
-#define VALID_MAX_ACCESS_SIZE ACCESS_SIZE
-#define IMPL_MIN_ACCESS_SIZE ACCESS_SIZE
-#define IMPL_MAX_ACCESS_SIZE ACCESS_SIZE
+/* if a read or write size is outside of the valid range, qemu automatically
+ * drops it */
+#define VALID_MIN_ACCESS_SIZE CAFE_MMIO_ACCESS_SIZE
+#define VALID_MAX_ACCESS_SIZE CAFE_MMIO_ACCESS_SIZE
 
+/* set the size range for reads and writes supported by our implementation */
+#define IMPL_MIN_ACCESS_SIZE CAFE_MMIO_ACCESS_SIZE
+#define IMPL_MAX_ACCESS_SIZE CAFE_MMIO_ACCESS_SIZE
+
+/* handler for all device operations triggered by writing to CAFE_CMD */
 static void cafe_cmd(CafeState *dev) {
-  switch (dev->r[CAFE_CMD]) {
+
+  /* driver must wait for the DMA_BUF_AVAILABLE interrupt to use the dma buffer
+   * again. */
+
+  switch (dev->reg[CAFE_CMD]) {
   case CAFE_DMA_READ:
-    cafe_dma_read(dev, dev->dma_buf);
+    cafe_dma_read(dev);
     cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
     break;
 
   case CAFE_DMA_WRITE:
-    cafe_dma_write(dev, dev->dma_buf);
+    cafe_dma_write(dev);
     cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
     break;
 
-  case CAFE_DUMP_DMA_BUF:
-    cafe_dump_buf(dev, dev->dma_buf);
+  case CAFE_DUMP_MEM:
+    cafe_dump_mem(dev);
     cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
     break;
   }
 
-  dev->r[CAFE_CMD] = 0;
+  /* reset CAFE_CMD after handling */
+  dev->reg[CAFE_CMD] = CAFE_NOP;
 }
 
 static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
   CafeState *dev = opaque;
-  cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
+  uint64_t idx;
 
-  switch (addr / ACCESS_SIZE) {
-  case CAFE_CMD:
-    return dev->r[CAFE_CMD];
-
-  case CAFE_DMA_SRC:
-    return dev->r[CAFE_DMA_SRC];
-
-  case CAFE_DMA_DST:
-    return dev->r[CAFE_DMA_DST];
-
-  case CAFE_DMA_SZ:
-    return dev->r[CAFE_DMA_SZ];
-
-  case CAFE_DUMP_FILENAME:
-    return dev->r[CAFE_DUMP_FILENAME];
+  if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
+    cafe_log("got invalid mmio read of %u bytes at addr %lx\n", size, addr);
+    return 0;
   }
 
-  return 0LL;
+  /* todo: stringify addr */
+  cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
+
+  return dev->reg[idx];
 }
 
 static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
                             unsigned size) {
   CafeState *dev = opaque;
+  uint64_t idx;
+
+  if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
+    cafe_log("got invalid mmio write of %u bytes at addr %lx\n", size, addr);
+    return;
+  }
 
   cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size, addr,
            data);
 
-  switch (addr / ACCESS_SIZE) {
+  /* special cases */
+  switch (idx) {
   case CAFE_CMD:
-    dev->r[CAFE_CMD] = data;
+    dev->reg[CAFE_CMD] = data;
     cafe_cmd(dev);
-    break;
-
-  case CAFE_DMA_SRC:
-    dev->r[CAFE_DMA_SRC] = data;
-    break;
-
-  case CAFE_DMA_DST:
-    dev->r[CAFE_DMA_DST] = data;
-    break;
+    return;
 
   case CAFE_DMA_SZ:
-    dev->r[CAFE_DMA_SZ] = MIN(data, CAFE_DMA_BUF_SZ);
-    break;
-
-  case CAFE_DUMP_FILENAME:
-    dev->r[CAFE_DUMP_FILENAME] = data;
-    break;
+    dev->reg[CAFE_DMA_SZ] = MIN(data, CAFE_DMA_BUF_SZ);
+    return;
 
   case CAFE_LOWER_INT:
     cafe_irq_lower(dev, data);
-    break;
+    return;
   }
+
+  dev->reg[idx] = data;
 }
 
 void cafe_mmio_init(CafeState *dev, Error **errp) {

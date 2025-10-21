@@ -8,48 +8,26 @@
 static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
   struct device *dev;
   struct cafe_dev_data *data;
-  phys_addr_t ram_size;
 
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
-  ram_size = max_ram_addr;
 
-  dev_info(dev, "cafe_dump_mem(): writing %llu bytes to %s\n", ram_size,
+  dev_info(dev, "cafe_dump_mem(): writing %llx bytes to %s\n", max_ram_addr,
            (char *)&filename);
 
-  writeq(CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
-  writeq(filename, data->bar.mmio + CAFE_DUMP_FILENAME * 8);
+  /* set dump filename */
+  writeq(filename, data->bar.mmio + CAFE_DUMP_FILE * 8);
 
-  for (uint64_t i = 0; i < (ram_size / CAFE_DMA_BUF_SZ); i++) {
-    writeq(i * CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SRC * 8);
-    writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
+  /* set address range */
+  writeq(0, data->bar.mmio + CAFE_DUMP_FIRST_ADDR * 8);
+  writeq(max_ram_addr, data->bar.mmio + CAFE_DUMP_LAST_ADDR * 8);
 
-    wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
-    reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
+  /* start memory dump */
+  writeq(CAFE_DUMP_MEM, data->bar.mmio + CAFE_CMD * 8);
 
-    writeq(CAFE_DUMP_DMA_BUF, data->bar.mmio + CAFE_CMD * 8);
-
-    wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
-    reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
-  }
-
-  // todo write a function bruh
-  /* sapataria */
-  writeq(ram_size % CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
-  writeq(ram_size - (ram_size % CAFE_DMA_BUF_SZ),
-         data->bar.mmio + CAFE_DMA_SRC * 8);
-  writeq(CAFE_DMA_READ, data->bar.mmio + CAFE_CMD * 8);
-
+  /* sync */
   wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
   reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
-
-  writeq(CAFE_DUMP_DMA_BUF, data->bar.mmio + CAFE_CMD * 8);
-
-  wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
-  reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
-  /* ------------------------ */
-
-  return;
 }
 
 int cafe_mmap(struct file *f, struct vm_area_struct *vma) {
@@ -69,12 +47,14 @@ int cafe_mmap(struct file *f, struct vm_area_struct *vma) {
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
 
+  /* check request bounds */
   if ((len = vma->vm_end - vma->vm_start) > data->bar.len) {
     dev_err(dev, "cafe_mmap() out of bounds request\n");
     err = -EINVAL;
     goto err_exit;
   }
 
+  /* create virtual memory mapping */
   if ((err = vm_iomap_memory(vma, data->bar.start, len))) {
     dev_err(dev, "vm_iomap_memory() failed: %pe\n", ERR_PTR(err));
     goto err_exit;
@@ -93,6 +73,7 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
   struct device *dev;
   struct cafe_dev_data *data;
 
+  /* check if operation is valid */
   if (cmd >= CAFE_IOCTL_CNT)
     return -EINVAL;
 
@@ -105,6 +86,7 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
 
+  /* call operation handlers */
   switch (cmd) {
   case CAFE_IOCTL_DUMP_MEM:
     cafe_dump_mem(pdev, arg);
