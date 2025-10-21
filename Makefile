@@ -1,4 +1,4 @@
-SRC_DIR := src/hw
+SRC_DIR := include src/hw
 QEMU_DIR := qemu
 BUILD_DIR := $(QEMU_DIR)/build
 PATCH_MARKER := $(QEMU_DIR)/.patched
