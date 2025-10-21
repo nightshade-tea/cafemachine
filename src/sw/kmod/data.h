@@ -14,9 +14,9 @@ struct cafe_bar {
 /* struct for device instance specific data */
 struct cafe_dev_data {
   struct cafe_bar bar;
-  struct device *chrdev;                        /* /dev/cafe */
-  struct completion devop_done[CAFE_WAIT_CNT];  /* sync operations */
-  dev_t dev_num;                                /* major and minor */
+  struct device *chrdev;                       /* /dev/cafe */
+  struct completion devop_done[CAFE_WAIT_CNT]; /* sync operations */
+  dev_t dev_num;                               /* major and minor */
 };
 
 struct cafe_dev_data *cafe_dev_data_alloc(void);

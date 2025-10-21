@@ -76,4 +76,3 @@ void cafe_irq_disable(struct pci_dev *pdev) {
 
   pci_free_irq_vectors(pdev);
 }
-
