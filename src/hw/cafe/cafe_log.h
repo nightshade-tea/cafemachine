@@ -2,6 +2,7 @@
 #define CAFE_LOG_H
 
 #include "cafe.h"
+#include "qemu/log.h"
 
 #define cafe_log(...) qemu_log(CAFE_HW_NAME ": " __VA_ARGS__)
 

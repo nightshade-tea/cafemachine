@@ -9,7 +9,7 @@ HW_NAME=cafe
 
 # link our device source inside qemu
 ln -s $ROOT/src/hw/$HW_NAME $QEMU_DIR/hw/
-ln -s $ROOT/include/cafe.h $ROOT/qemu/include/
+ln -s $ROOT/include/*.h $ROOT/qemu/include/
 
 # include it in the build steps
 echo "source $HW_NAME/Kconfig" >> $QEMU_DIR/hw/Kconfig
