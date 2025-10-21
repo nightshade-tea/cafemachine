@@ -1,6 +1,8 @@
 #ifndef CAFE_H
 #define CAFE_H
 
+#include "cafe_enum.h"
+
 /* device attributes */
 #define CAFE_HW_NAME "cafe"
 #define CAFE_VENDOR_ID 0x1ced
@@ -22,43 +24,37 @@
 #define CAFE_IRQ_MAX_VECTORS 32
 
 /* interrupt vector values */
-enum cafe_irq_vec {
-  CAFE_INT_DMA_BUF_AVAILABLE, /* notify a dma operation completion */
-  CAFE_INT_VECTOR_CNT
-};
+__CAFE_ENUM(cafe_irq_vec,
+            CAFE_INT_DMA_BUF_AVAILABLE, /* notify a dma operation completion */
+            CAFE_INT_VECTOR_CNT)
 
 /* device operations (valid CAFE_CMD values) */
-enum cafe_ops {
-  CAFE_NOP,
-  CAFE_DMA_READ,  /* read DMA_SZ bytes from DMA_SRC to dma_buf */
-  CAFE_DMA_WRITE, /* write DMA_SZ bytes from dma_buf to DMA_DST */
-  CAFE_DUMP_MEM,  /* dump memory from CAFE_DUMP_FIRST_ADDR until
-                     CAFE_DUMP_LAST_ADDR into CAFE_DUMP_FILE */
-};
+__CAFE_ENUM(cafe_ops, CAFE_NOP,
+            CAFE_DMA_READ,  /* read DMA_SZ bytes from DMA_SRC to dma_buf */
+            CAFE_DMA_WRITE, /* write DMA_SZ bytes from dma_buf to DMA_DST */
+            CAFE_DUMP_MEM,  /* dump memory from CAFE_DUMP_FIRST_ADDR until
+                               CAFE_DUMP_LAST_ADDR into CAFE_DUMP_FILE */
+)
 
 /* device control registers */
-enum cafe_reg {
-  CAFE_CMD,             /* register for triggering device operations */
-  CAFE_DMA_SRC,         /* source physical address to read into dma_buf */
-  CAFE_DMA_DST,         /* destination physical address to write dma_buf */
-  CAFE_DMA_SZ,          /* dma operation read/write size */
-  CAFE_DUMP_FILE,       /* dump file basename (max 8 chars) */
-  CAFE_DUMP_FIRST_ADDR, /* first physical address to dump */
-  CAFE_DUMP_LAST_ADDR,  /* last physical address to dump */
-  CAFE_LOWER_INT,       /* write the interrupt number to lower */
-  CAFE_REG_CNT
-};
+__CAFE_ENUM(cafe_reg, CAFE_CMD, /* register for triggering device operations */
+            CAFE_DMA_SRC,   /* source physical address to read into dma_buf */
+            CAFE_DMA_DST,   /* destination physical address to write dma_buf */
+            CAFE_DMA_SZ,    /* dma operation read/write size */
+            CAFE_DUMP_FILE, /* dump file basename (max 8 chars) */
+            CAFE_DUMP_FIRST_ADDR, /* first physical address to dump */
+            CAFE_DUMP_LAST_ADDR,  /* last physical address to dump */
+            CAFE_LOWER_INT,       /* write the interrupt number to lower */
+            CAFE_REG_CNT)
 
 /* driver ioctl operations */
-enum cafe_ioctl {
-  CAFE_IOCTL_DUMP_MEM, /* dump all memory into a dump file */
-  CAFE_IOCTL_CNT
-};
+__CAFE_ENUM(cafe_ioctl,
+            CAFE_IOCTL_DUMP_MEM, /* dump all memory into a dump file */
+            CAFE_IOCTL_CNT)
 
 /* driver operation completion ids (synchronization) */
-enum cafe_complete {
-  CAFE_WAIT_DMA, /* wait for dma operation completion */
-  CAFE_WAIT_CNT
-};
+__CAFE_ENUM(cafe_complete,
+            CAFE_WAIT_DMA, /* wait for dma operation completion */
+            CAFE_WAIT_CNT)
 
 #endif /* CAFE_H */

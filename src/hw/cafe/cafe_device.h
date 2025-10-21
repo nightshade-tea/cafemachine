@@ -5,7 +5,6 @@
 #include "cafe.h"
 #include "hw/pci/msi.h"
 #include "hw/pci/pci.h"
-#include "qemu/log.h"
 
 #define TYPE_CAFE_DEVICE CAFE_HW_NAME
 
