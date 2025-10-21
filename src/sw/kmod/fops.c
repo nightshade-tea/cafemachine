@@ -5,6 +5,7 @@
 #include "kmod.h"
 #include <linux/ioport.h>
 
+/* fix this */
 static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename)
 {
 	struct device *dev;
@@ -34,8 +35,6 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename)
 		reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
 	}
 
-	// todo write a function bruh
-	/* sapataria */
 	writeq(ram_size % CAFE_DMA_BUF_SZ, data->bar.mmio + CAFE_DMA_SZ * 8);
 	writeq(ram_size - (ram_size % CAFE_DMA_BUF_SZ),
 	       data->bar.mmio + CAFE_DMA_SRC * 8);
@@ -48,7 +47,6 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename)
 
 	wait_for_completion(&data->devop_done[CAFE_WAIT_DMA]);
 	reinit_completion(&data->devop_done[CAFE_WAIT_DMA]);
-	/* ------------------------ */
 
 	return;
 }
@@ -72,12 +70,14 @@ int cafe_mmap(struct file *f, struct vm_area_struct *vma)
 	dev = &pdev->dev;
 	data = pci_get_drvdata(pdev);
 
+	/* check request bounds */
 	if ((len = vma->vm_end - vma->vm_start) > data->bar.len) {
 		dev_err(dev, "cafe_mmap() out of bounds request\n");
 		err = -EINVAL;
 		goto err_exit;
 	}
 
+	/* create virtual memory mapping */
 	if ((err = vm_iomap_memory(vma, data->bar.start, len))) {
 		dev_err(dev, "vm_iomap_memory() failed: %pe\n", ERR_PTR(err));
 		goto err_exit;
@@ -97,6 +97,7 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	struct device *dev;
 	struct cafe_dev_data *data;
 
+	/* check if operation is valid */
 	if (cmd >= CAFE_IOCTL_CNT)
 		return -EINVAL;
 
@@ -110,6 +111,7 @@ long cafe_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	dev = &pdev->dev;
 	data = pci_get_drvdata(pdev);
 
+	/* call operation handlers */
 	switch (cmd) {
 	case CAFE_IOCTL_DUMP_MEM:
 		cafe_dump_mem(pdev, arg);
