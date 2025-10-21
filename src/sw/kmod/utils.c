@@ -1,6 +1,6 @@
 #include "utils.h"
 
-static int get_max(struct resource *res, void *arg) {
+static int get_max_addr(struct resource *res, void *arg) {
   phys_addr_t *max = arg;
   if (res->end > *max)
     *max = res->end;
@@ -15,7 +15,8 @@ phys_addr_t cafe_find_max_ram_addr() {
   flags = IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
   max = 0;
 
-  walk_iomem_res_desc(IORES_DESC_NONE, flags, 0, -1, &max, get_max);
+  /* walk system ram */
+  walk_iomem_res_desc(IORES_DESC_NONE, flags, 0, -1, &max, get_max_addr);
 
   return max;
 }

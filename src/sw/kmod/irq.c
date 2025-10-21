@@ -2,6 +2,7 @@
 #include "cafe.h"
 #include "data.h"
 
+/* interrupt handlers */
 static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
   struct pci_dev *pdev;
   struct device *dev;
@@ -11,7 +12,7 @@ static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
   dev = &pdev->dev;
   dev_data = pci_get_drvdata(pdev);
 
-  //  dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
+  // dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
 
   complete(&dev_data->devop_done[CAFE_WAIT_DMA]);
 
@@ -20,23 +21,27 @@ static irqreturn_t cafe_handler_dma_buf_available(int irq, void *data) {
   return IRQ_HANDLED;
 }
 
+/* interrupt handlers array */
 static irqreturn_t (*const handlers[CAFE_INT_VECTOR_CNT])(int, void *) = {
     cafe_handler_dma_buf_available};
 
 int cafe_irq_enable(struct pci_dev *pdev) {
   struct device *dev;
-  int irqn;
   int err;
 
   dev = &pdev->dev;
 
+  /* allocate a contiguous block of interrupt vectors for our device */
   if ((err = pci_alloc_irq_vectors(pdev, CAFE_INT_VECTOR_CNT,
                                    CAFE_INT_VECTOR_CNT, PCI_IRQ_MSI)) < 0) {
     dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n", ERR_PTR(err));
     goto err_pci_alloc_irq_vectors;
   }
 
+  /* register the handlers for each interrupt vector */
   for (int i = 0; i < CAFE_INT_VECTOR_CNT; i++) {
+    int irqn;
+
     if ((irqn = pci_irq_vector(pdev, i)) < 0) {
       err = irqn;
       dev_err(dev, "pci_irq_vector() failed: %pe\n", ERR_PTR(err));
@@ -64,8 +69,11 @@ err_pci_alloc_irq_vectors:
 void cafe_irq_disable(struct pci_dev *pdev) {
   int irqn;
 
-  if ((irqn = pci_irq_vector(pdev, 0)) >= 0)
-    free_irq(irqn, pdev);
+  for (int i = 0; i < CAFE_INT_VECTOR_CNT; i++) {
+    if ((irqn = pci_irq_vector(pdev, i)) >= 0)
+      free_irq(irqn, pdev);
+  }
 
   pci_free_irq_vectors(pdev);
 }
+

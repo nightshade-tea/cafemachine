@@ -15,12 +15,13 @@ static struct pci_device_id cafe_id_table[] = {
     {},
 };
 
-/* The pci_device_id structure needs to be exported to user space to allow the
+/* the pci_device_id structure needs to be exported to user space to allow the
  * hotplug and module loading systems know what module works with what hardware
- * devices. The macro MODULE_DEVICE_TABLE accomplishes this. */
+ * devices. the macro MODULE_DEVICE_TABLE accomplishes this. */
 
 MODULE_DEVICE_TABLE(pci, cafe_id_table);
 
+/* device initialization */
 static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
   struct cafe_dev_data *data;
   struct device *dev;
@@ -36,6 +37,7 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
     goto err_cafe_dev_data_alloc;
   }
 
+  /* store cafe_dev_data on pdev->dev.driver_data */
   pci_set_drvdata(pdev, data);
 
   if ((err = pci_enable_device(pdev))) {
@@ -43,18 +45,16 @@ static int cafe_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
     goto err_pci_enable_device;
   }
 
-  /* Enable bus mastering for DMA and MSI */
-
+  /* enable bus mastering for dma and msi */
   pci_set_master(pdev);
 
-  /* Enable Memory-Write-Invalidate for DMA */
-
+  /* enable memory-write-invalidate for dma */
   if ((err = pci_set_mwi(pdev))) {
     dev_err(dev, "pci_set_mwi() failed: %pe\n", ERR_PTR(err));
     goto err_pci_set_mwi;
   }
 
-  /* The driver can only determine MMIO and IO Port resource availability
+  /* the driver can only determine mmio and io port resource availability
    * _after_ calling pci_enable_device(). */
 
   if ((err = cafe_mmio_enable(pdev))) {
@@ -103,6 +103,7 @@ err_cafe_dev_data_alloc:
   return err;
 }
 
+/* device deinitialization */
 static void cafe_remove(struct pci_dev *pdev) {
   struct device *dev;
 
@@ -110,7 +111,7 @@ static void cafe_remove(struct pci_dev *pdev) {
 
   cafe_irq_disable(pdev);
 
-  /* drivers should call pci_release_region() AFTER calling
+  /* drivers should call pci_release_region() after calling
    * pci_disable_device(). The idea is to prevent two devices colliding on
    * the same address range. */
 
@@ -124,6 +125,7 @@ static void cafe_remove(struct pci_dev *pdev) {
   dev_info(dev, "cafe device removed\n");
 }
 
+/* cafe driver struct */
 static struct pci_driver cafe_pci_driver = {
     .name = CAFE_HW_NAME,
     .id_table = cafe_id_table,
@@ -131,11 +133,12 @@ static struct pci_driver cafe_pci_driver = {
     .remove = cafe_remove,
 };
 
+/* driver initialization */
 static int __init cafe_init(void) {
   int err;
 
   max_ram_addr = cafe_find_max_ram_addr();
-  pr_info("cafe_find_max_ram_addr(): max ram addr %llu\n", max_ram_addr);
+  pr_info("cafe_find_max_ram_addr(): max ram addr 0x%llx\n", max_ram_addr);
 
   if ((err = cafe_chrdev_init()) < 0) {
     pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));
@@ -159,11 +162,13 @@ err_cafe_chrdev_init:
   return err;
 }
 
+/* driver deinitialization */
 static void cafe_exit(void) {
   pci_unregister_driver(&cafe_pci_driver);
   cafe_chrdev_deinit();
   printk("cafe driver unloaded\n");
 }
 
+/* register entry point and exit point */
 module_init(cafe_init);
 module_exit(cafe_exit);
