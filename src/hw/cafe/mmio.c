@@ -31,8 +31,8 @@ static void cafe_cmd(CafeState *dev) {
     cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
     break;
 
-  case CAFE_DUMP_DMA_BUF:
-    cafe_dump_buf(dev);
+  case CAFE_DUMP_MEM:
+    cafe_dump_mem(dev);
     cafe_irq_raise(dev, CAFE_INT_DMA_BUF_AVAILABLE);
     break;
   }
@@ -59,36 +59,33 @@ static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
 static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
                             unsigned size) {
   CafeState *dev = opaque;
+  uint64_t idx;
+
+  if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
+    cafe_log("got invalid mmio write of %u bytes at addr %lx\n", size, addr);
+    return;
+  }
 
   cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size, addr,
            data);
 
-  switch (addr / CAFE_MMIO_ACCESS_SIZE) {
+  /* special cases */
+  switch (idx) {
   case CAFE_CMD:
     dev->reg[CAFE_CMD] = data;
     cafe_cmd(dev);
-    break;
-
-  case CAFE_DMA_SRC:
-    dev->reg[CAFE_DMA_SRC] = data;
-    break;
-
-  case CAFE_DMA_DST:
-    dev->reg[CAFE_DMA_DST] = data;
-    break;
+    return;
 
   case CAFE_DMA_SZ:
     dev->reg[CAFE_DMA_SZ] = MIN(data, CAFE_DMA_BUF_SZ);
-    break;
-
-  case CAFE_DUMP_FILE:
-    dev->reg[CAFE_DUMP_FILE] = data;
-    break;
+    return;
 
   case CAFE_LOWER_INT:
     cafe_irq_lower(dev, data);
-    break;
+    return;
   }
+
+  dev->reg[idx] = data;
 }
 
 void cafe_mmio_init(CafeState *dev, Error **errp) {

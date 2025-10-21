@@ -16,6 +16,7 @@
 /* dma settings */
 #define CAFE_DMA_BUF_SZ (2 * 0x100000) /* 2 MiB */
 #define CAFE_DMA_DUMP_EXT ".dat"
+#define CAFE_DMA_DEFAULT_DUMP_FILE "cafedump"
 
 /* irq settings */
 #define CAFE_IRQ_MAX_VECTORS 32
@@ -29,19 +30,22 @@ enum cafe_irq_vec {
 /* device operations (valid CAFE_CMD values) */
 enum cafe_ops {
   CAFE_NOP,
-  CAFE_DMA_READ, /* read DMA_SZ bytes from DMA_SRC to dma_buf */
+  CAFE_DMA_READ,  /* read DMA_SZ bytes from DMA_SRC to dma_buf */
   CAFE_DMA_WRITE, /* write DMA_SZ bytes from dma_buf to DMA_DST */
-  CAFE_DUMP_DMA_BUF, /* write contents of dma_buf into DUMP_FILE */
+  CAFE_DUMP_MEM,  /* dump memory from CAFE_DUMP_FIRST_ADDR until
+                     CAFE_DUMP_LAST_ADDR into CAFE_DUMP_FILE */
 };
 
 /* device control registers */
 enum cafe_reg {
-  CAFE_CMD, /* register for triggering device operations */
-  CAFE_DMA_SRC, /* source physical address to read into dma_buf */
-  CAFE_DMA_DST, /* destination physical address to write dma_buf */
-  CAFE_DMA_SZ, /* dma operation read/write size */
-  CAFE_DUMP_FILE, /* dump filename */
-  CAFE_LOWER_INT, /* write the interrupt number to lower */
+  CAFE_CMD,             /* register for triggering device operations */
+  CAFE_DMA_SRC,         /* source physical address to read into dma_buf */
+  CAFE_DMA_DST,         /* destination physical address to write dma_buf */
+  CAFE_DMA_SZ,          /* dma operation read/write size */
+  CAFE_DUMP_FILE,       /* dump file basename (max 8 chars) */
+  CAFE_DUMP_FIRST_ADDR, /* first physical address to dump */
+  CAFE_DUMP_LAST_ADDR,  /* last physical address to dump */
+  CAFE_LOWER_INT,       /* write the interrupt number to lower */
   CAFE_REG_CNT
 };
 

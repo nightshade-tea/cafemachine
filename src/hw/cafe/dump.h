@@ -3,6 +3,6 @@
 
 #include "cafe_device.h"
 
-int cafe_dump_buf(CafeState *dev);
+int cafe_dump_mem(CafeState *dev);
 
 #endif /* CAFE_DUMP_H */
