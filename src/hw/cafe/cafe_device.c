@@ -3,6 +3,62 @@
 #include "irq.h"
 #include "mmio.h"
 
+static void print_cs(PCIDevice *pci_dev) {
+  cafe_log("config space:\n");
+
+  for (int i = 0; i < 8; i++) {
+    qemu_log("%x ", *(pci_dev->config + i));
+  }
+
+  qemu_log("\n");
+}
+
+static void print_wm(PCIDevice *pci_dev) {
+  cafe_log("writable mask:\n");
+
+  for (int i = 0; i < 8; i++) {
+    qemu_log("%x ", *(pci_dev->wmask + i));
+  }
+
+  qemu_log("\n");
+}
+
+static void print_cm(PCIDevice *pci_dev) {
+  cafe_log("config mask:\n");
+
+  for (int i = 0; i < 8; i++) {
+    qemu_log("%x ", *(pci_dev->cmask + i));
+  }
+
+  qemu_log("\n");
+}
+
+static void cafe_reset(Object *obj, ResetType type) {
+  PCIDevice *pci_dev = PCI_DEVICE(obj);
+
+  cafe_log("cafe_reset() called!\n");
+
+  /* enable bus mastering */
+  memory_region_set_enabled(&pci_dev->bus_master_enable_region, true);
+  pci_dev->is_master = true; /* cache the status */
+
+  uint16_t cmd = pci_get_word(pci_dev->config + PCI_COMMAND);
+  cmd |= PCI_COMMAND_MASTER;
+  pci_set_word(pci_dev->config + PCI_COMMAND, cmd);
+
+  uint16_t cmask = pci_get_word(pci_dev->cmask + PCI_COMMAND);
+  cmask |= PCI_COMMAND_MASTER;
+  pci_set_word(pci_dev->cmask + PCI_COMMAND, cmask);
+
+  uint16_t wmask = pci_get_word(pci_dev->wmask + PCI_COMMAND);
+  wmask &= ~PCI_COMMAND_MASTER;
+  pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
+
+  print_cs(pci_dev);
+  print_wm(pci_dev);
+  print_cm(pci_dev);
+}
+
 /* instantiate a cafe device object (CafeState) */
 static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
   CafeState *dev = CAFE_DEVICE(pci_dev);
@@ -22,6 +78,9 @@ static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
 static void cafe_class_init(ObjectClass *klass, const void *data) {
   DeviceClass *device_class = DEVICE_CLASS(klass);
   PCIDeviceClass *pci_device_class = PCI_DEVICE_CLASS(klass);
+  ResettableClass *rc = RESETTABLE_CLASS(klass);
+
+  rc->phases.enter = cafe_reset;
 
   pci_device_class->realize = cafe_realize;
   pci_device_class->vendor_id = CAFE_VENDOR_ID;
