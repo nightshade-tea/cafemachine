@@ -20,6 +20,8 @@ static void cafe_cmd(CafeState *dev) {
   /* driver must wait for the DMA_BUF_AVAILABLE interrupt to use the dma buffer
    * again. */
 
+  cafe_log("got %s command\n", cafe_ops_str(dev->reg[CAFE_CMD]));
+
   switch (dev->reg[CAFE_CMD]) {
   case CAFE_DMA_READ:
     cafe_dma_read(dev);
@@ -43,15 +45,15 @@ static void cafe_cmd(CafeState *dev) {
 
 static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
   CafeState *dev = opaque;
-  uint64_t idx;
+  unsigned int idx;
 
   if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
-    cafe_log("got invalid mmio read of %u bytes at addr %lx\n", size, addr);
+    cafe_log("got invalid mmio read: addr=0x%lx idx=%u\n", addr, idx);
     return 0;
   }
 
-  /* todo: stringify addr */
-  cafe_log("got mmio read of %u bytes at addr %lx\n", size, addr);
+  cafe_log("got mmio read at register %s -> 0x%lx\n", cafe_reg_str(idx),
+           dev->reg[idx]);
 
   return dev->reg[idx];
 }
@@ -59,15 +61,14 @@ static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
 static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
                             unsigned size) {
   CafeState *dev = opaque;
-  uint64_t idx;
+  unsigned int idx;
 
   if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
-    cafe_log("got invalid mmio write of %u bytes at addr %lx\n", size, addr);
+    cafe_log("got invalid mmio write: addr=0x%lx idx=%u\n", addr, idx);
     return;
   }
 
-  cafe_log("got mmio write of %u bytes at addr %lx: data=%lx\n", size, addr,
-           data);
+  cafe_log("got mmio write at register %s <- 0x%lx\n", cafe_reg_str(idx), data);
 
   /* special cases */
   switch (idx) {
