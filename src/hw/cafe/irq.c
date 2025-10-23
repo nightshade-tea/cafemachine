@@ -27,7 +27,7 @@ void cafe_irq_raise(CafeState *dev, unsigned int vector)
     dev->irq[vector] = true;
     msi_notify(&dev->pci_dev, vector);
 
-    cafe_log("irq raised\n");
+    cafe_log("irq %s raised\n", cafe_irq_vec_str(vector));
 }
 
 void cafe_irq_lower(CafeState *dev, unsigned int vector)
@@ -37,11 +37,11 @@ void cafe_irq_lower(CafeState *dev, unsigned int vector)
     }
 
     dev->irq[vector] = false;
-    cafe_log("irq lowered\n");
+    cafe_log("irq %s lowered\n", cafe_irq_vec_str(vector));
 }
 
 void cafe_irq_reset(CafeState *dev)
 {
     memset(&dev->irq, 0, sizeof dev->irq);
-    cafe_log("irq reset\n");
+    cafe_log("irq_reset: all irqs lowered\n");
 }

@@ -8,7 +8,7 @@
 
 #define TYPE_CAFE_DEVICE CAFE_HW_NAME
 
-/* this provides some niceties such as type casts for our types
+/* this provides some niceties such as type-safe cast macros
  * https://elixir.bootlin.com/qemu/v10.1.0/source/include/qom/object.h#L220 */
 OBJECT_DECLARE_TYPE(CafeState, CafeClass, CAFE_DEVICE);
 
