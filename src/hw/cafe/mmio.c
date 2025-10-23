@@ -48,11 +48,11 @@ static uint64_t cafe_mmio_read(void *opaque, hwaddr addr, unsigned size) {
   unsigned int idx;
 
   if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
-    cafe_log("got invalid mmio read: addr=0x%lx idx=%u\n", addr, idx);
+    cafe_log("got invalid mmio read: addr=%#lx idx=%u\n", addr, idx);
     return 0;
   }
 
-  cafe_log("got mmio read at register %s -> 0x%lx\n", cafe_reg_str(idx),
+  cafe_log("got mmio read at register %s -> %#lx\n", cafe_reg_str(idx),
            dev->reg[idx]);
 
   return dev->reg[idx];
@@ -64,11 +64,11 @@ static void cafe_mmio_write(void *opaque, hwaddr addr, uint64_t data,
   unsigned int idx;
 
   if ((idx = addr / CAFE_MMIO_ACCESS_SIZE) >= CAFE_REG_CNT) {
-    cafe_log("got invalid mmio write: addr=0x%lx idx=%u\n", addr, idx);
+    cafe_log("got invalid mmio write: addr=%#lx idx=%u\n", addr, idx);
     return;
   }
 
-  cafe_log("got mmio write at register %s <- 0x%lx\n", cafe_reg_str(idx), data);
+  cafe_log("got mmio write at register %s <- %#lx\n", cafe_reg_str(idx), data);
 
   /* special cases */
   switch (idx) {

@@ -46,7 +46,7 @@ int cafe_dump_mem(CafeState *dev) {
     /* read memory */
     if ((err = pci_dma_read(&dev->pci_dev, addr, dev->dma_buf, readsz)) !=
         MEMTX_OK) {
-      cafe_log("failed dma read of %zu bytes from 0x%" PRIx64 "\n", readsz,
+      cafe_log("failed dma read of %zu bytes from %#" PRIx64 "\n", readsz,
                addr);
       memset(dev->dma_buf, 0, CAFE_DMA_BUF_SZ);
     }

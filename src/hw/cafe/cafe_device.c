@@ -11,7 +11,7 @@ static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
   /* set pci express capability on pci configuration space */
   if (pci_bus_is_express(pci_get_bus(pci_dev)) &&
       pcie_endpoint_cap_init(pci_dev, 0) >= 0)
-    cafe_log("successfully initialized device as express\n");
+    cafe_log("express capability set\n");
 
   cafe_mmio_init(dev, errp);
   cafe_irq_init(dev, errp);
