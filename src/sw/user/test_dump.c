@@ -9,10 +9,12 @@
 #include <sys/types.h>
 
 int main() {
+  unsigned long arg;
+  char dumpfile[sizeof arg] = "mem";
   int fd;
-  char dumpfile[] = "cafdump";
-  unsigned long arg = *((unsigned long *)dumpfile);
   long err;
+
+  arg = *((unsigned long *)dumpfile);
 
   if ((fd = open("/dev/cafe", O_RDWR)) < 0) {
     perror("failed to open /dev/cafe\n");
