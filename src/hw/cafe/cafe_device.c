@@ -18,7 +18,6 @@ static void cafe_realize(PCIDevice *pci_dev, Error **errp) {
 
   /* enable bus mastering */
   memory_region_set_enabled(&pci_dev->bus_master_enable_region, true);
-  pci_dev->is_master = true;
 
   /* mask bus master bit to avoid OS overwrite */
   cmd = pci_get_word(pci_dev->config + PCI_COMMAND);
