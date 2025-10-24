@@ -138,7 +138,7 @@ static int __init cafe_init(void) {
   int err;
 
   max_ram_addr = cafe_find_max_ram_addr();
-  pr_info("cafe_find_max_ram_addr(): max ram addr 0x%llx\n", max_ram_addr);
+  pr_info("cafe_find_max_ram_addr(): max ram addr %#llx\n", max_ram_addr);
 
   if ((err = cafe_chrdev_init()) < 0) {
     pr_err("cafe_chrdev_init() failed: %pe\n", ERR_PTR(err));

@@ -12,7 +12,7 @@ static void cafe_dump_mem(struct pci_dev *pdev, unsigned long filename) {
   dev = &pdev->dev;
   data = pci_get_drvdata(pdev);
 
-  dev_info(dev, "cafe_dump_mem(): writing %llx bytes to %s\n", max_ram_addr,
+  dev_info(dev, "cafe_dump_mem(): writing %#llx bytes to %s\n", max_ram_addr,
            (char *)&filename);
 
   /* set dump filename */
