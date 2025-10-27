@@ -1,11 +1,13 @@
 #include "dump.h"
 #include "tea.h"
 #include "tea_log.h"
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
-int tea_dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
-                 hwaddr first, hwaddr last)
+static int tea_dump_mem(TeaState *dev,
+                        const char basename[TEA_MAX_BASENAME_LEN], hwaddr first,
+                        hwaddr last, bool relaxed)
 {
     // TEA_DUMP_EXT already has a null terminator
     char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
@@ -17,7 +19,7 @@ int tea_dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
     /* if unset, use default value */
     if (basename_len == 0) {
         basename = TEA_DEFAULT_DUMP_BASENAME;
-        basename_len = sizeof(basename) - 1;
+        basename_len = sizeof(TEA_DEFAULT_DUMP_BASENAME) - 1;
         tea_log("dump filename not set, defaulting to %s%s\n", basename,
                 TEA_DUMP_EXT);
     }
@@ -30,7 +32,8 @@ int tea_dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
 
     /* create dump file */
     if (!(dumpf = fopen(filename, "wb+"))) {
-        tea_log("failed to open %s, aborting dump\n", filename);
+        tea_log("failed to open %s, aborting dump: %s\n", filename,
+                strerror(errno));
         return -1;
     }
 
@@ -41,14 +44,22 @@ int tea_dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
         /* read memory */
         if ((err = pci_dma_read(&dev->pci_dev, first, dev->dma_buf, readsz)) !=
             MEMTX_OK) {
-            tea_log("failed dma read of %zu bytes from %#" PRIx64 "\n", readsz,
-                    first);
+            tea_log("failed dma read of %zu bytes from %#" PRIx64
+                    " (MemTxResult=%u)\n",
+                    readsz, first, err);
+
+            if (!relaxed) {
+                tea_log("strict memory dump, aborting !!\n");
+                return err;
+            }
+
             memset(dev->dma_buf, 0, TEA_DMA_BUF_SZ);
         }
 
         /* write to dump file */
         if (fwrite(dev->dma_buf, readsz, 1, dumpf) != 1) {
-            tea_log("failed to write to %s, aborting dump\n", filename);
+            tea_log("failed to write to %s, aborting dump: %s\n", filename,
+                    strerror(errno));
             fclose(dumpf);
             return -1;
         }
@@ -58,4 +69,17 @@ int tea_dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
 
     fclose(dumpf);
     return 0;
+}
+
+int tea_dump_mem_strict(TeaState *dev,
+                        const char basename[TEA_MAX_BASENAME_LEN], hwaddr first)
+{
+    return tea_dump_mem(dev, basename, first, (1LLU << 48) - 1, false);
+}
+
+int tea_dump_mem_relaxed(TeaState *dev,
+                         const char basename[TEA_MAX_BASENAME_LEN],
+                         hwaddr first, hwaddr last)
+{
+    return tea_dump_mem(dev, basename, first, last, true);
 }

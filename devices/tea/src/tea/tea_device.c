@@ -1,9 +1,11 @@
 #include "tea_device.h"
+#include "dump.h"
 #include "tea_log.h"
 
 /* instantiate a tea device object (TeaState) */
 static void tea_realize(PCIDevice *pci_dev, Error **errp)
 {
+    TeaState *dev = TEA_DEVICE(pci_dev);
     uint16_t cmd, wmask, cmask;
 
     /* set pci express capability on pci configuration space */
@@ -27,6 +29,9 @@ static void tea_realize(PCIDevice *pci_dev, Error **errp)
     wmask = pci_get_word(pci_dev->wmask + PCI_COMMAND);
     wmask &= ~PCI_COMMAND_MASTER;
     pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
+
+    /* hotplug dump */
+    tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
 
     tea_log("device realized\n");
 }
