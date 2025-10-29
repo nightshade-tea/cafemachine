@@ -53,6 +53,10 @@ static int tea_dump_mem(TeaState *dev,
         }
 
         else {
+            if (failed_reads) {
+                tea_log("successful read, resetting failed_reads counter\n");
+            }
+
             failed_reads = 0;
         }
 
