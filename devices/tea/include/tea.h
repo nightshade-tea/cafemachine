@@ -11,8 +11,9 @@
 #define TEA_DUMP_EXT ".dat"
 #define TEA_DEFAULT_DUMP_BASENAME "teadump"
 #define TEA_MAX_BASENAME_LEN 8
-#define TEA_DUMP_TOLERANCE 1024 /* number of allowed sequential failed reads   \
-                                 */
+#define TEA_DUMP_TOLERANCE                                                     \
+    1024 /* number of allowed sequential failed reads                          \
+          */
 #define TEA_PAGE_SZ 4096
 #define TEA_DUMP_PAGES_ON_ERR 1
 

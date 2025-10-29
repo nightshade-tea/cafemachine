@@ -1,12 +1,23 @@
 #include "tea_device.h"
 #include "dump.h"
 #include "tea_log.h"
+#include <errno.h>
+#include <pthread.h>
+#include <string.h>
+
+static void *dump_thread_start(void *dev)
+{
+    tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
+    return 0;
+}
 
 /* instantiate a tea device object (TeaState) */
 static void tea_realize(PCIDevice *pci_dev, Error **errp)
 {
     TeaState *dev = TEA_DEVICE(pci_dev);
     uint16_t cmd, wmask, cmask;
+    pthread_t dump_thread;
+    int err;
 
     /* set pci express capability on pci configuration space */
     if (pci_bus_is_express(pci_get_bus(pci_dev)) &&
@@ -31,7 +42,9 @@ static void tea_realize(PCIDevice *pci_dev, Error **errp)
     pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
 
     /* hotplug dump */
-    tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
+    if ((err = pthread_create(&dump_thread, NULL, dump_thread_start, dev))) {
+        tea_log("failed to create dump thread: %s\n", strerror(err));
+    }
 
     tea_log("device realized\n");
 }
