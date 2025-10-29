@@ -2,7 +2,7 @@ ROOT := $(shell git rev-parse --show-toplevel)
 SRC_DIR := include/ src/
 QEMU_BIN := $(ROOT)/qemu-10.0.3/build/qemu-system-x86_64
 CORES := 16
-RAM := 2G
+RAM := 64G
 DEV_NAME := tea
 
 run:

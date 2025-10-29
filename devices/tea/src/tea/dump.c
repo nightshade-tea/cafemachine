@@ -13,6 +13,7 @@ static int tea_dump_mem(TeaState *dev,
     char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
     size_t basename_len;
     FILE *dumpf;
+    uint64_t failed_reads = 0;
 
     basename_len = strnlen(basename, TEA_MAX_BASENAME_LEN);
 
@@ -37,23 +38,22 @@ static int tea_dump_mem(TeaState *dev,
         return -1;
     }
 
-    while (first <= last) {
+    while (first <= last && (relaxed || failed_reads < TEA_DUMP_TOLERANCE)) {
         MemTxResult err;
         size_t readsz = MIN(TEA_DMA_BUF_SZ, last - first + 1);
 
         /* read memory */
         if ((err = pci_dma_read(&dev->pci_dev, first, dev->dma_buf, readsz)) !=
             MEMTX_OK) {
-            tea_log("failed dma read of %zu bytes from %#" PRIx64
+            tea_log("(%" PRIu64 ") failed dma read of %zu bytes from %#" PRIx64
                     " (MemTxResult=%u)\n",
-                    readsz, first, err);
-
-            if (!relaxed) {
-                tea_log("strict memory dump, aborting !!\n");
-                return err;
-            }
+                    ++failed_reads, readsz, first, err);
 
             memset(dev->dma_buf, 0, TEA_DMA_BUF_SZ);
+        }
+
+        else {
+            failed_reads = 0;
         }
 
         /* write to dump file */
@@ -67,6 +67,7 @@ static int tea_dump_mem(TeaState *dev,
         first += readsz;
     }
 
+    tea_log("finished memory dump\n");
     fclose(dumpf);
     return 0;
 }

@@ -7,9 +7,12 @@
 #define TEA_DEVICE_ID 0x7ea
 
 /* dma settings */
-#define TEA_DMA_BUF_SZ (2 * 0x100000) /* 2 MiB */
+#define TEA_DMA_BUF_SZ (2 * 1024 * 1024) /* 2 MiB */
 #define TEA_DUMP_EXT ".dat"
 #define TEA_DEFAULT_DUMP_BASENAME "teadump"
 #define TEA_MAX_BASENAME_LEN 8
+#define TEA_DUMP_TOLERANCE                                                     \
+    1024 /* number of sequential failed reads before we                        \
+            give up */
 
 #endif /* TEA_H */
