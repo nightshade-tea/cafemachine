@@ -5,6 +5,9 @@ CORES := 16
 RAM := 2G
 DEV_NAME := tea
 
+build:
+	$(MAKE) -C $(ROOT)
+
 run:
 	$(QEMU_BIN)	                                               	\
 		-M q35                                                    \

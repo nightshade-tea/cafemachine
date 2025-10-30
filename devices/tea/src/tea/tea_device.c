@@ -1,91 +1,10 @@
 #include "tea_device.h"
 #include "dump.h"
+#include "server.h"
 #include "tea_log.h"
 #include <errno.h>
-#include <netinet/in.h>
 #include <pthread.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-
-static void *dump_thread_start(void *dev)
-{
-    struct sockaddr_in serv_addr, cli_addr;
-    int listen_sock, conn;
-
-#if TEA_HOTPLUG_DUMP
-    tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
-#endif
-
-    if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        tea_log("failed to create socket : %s\n", strerror(errno));
-        return 0;
-    }
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(TEA_SERVER_PORT);
-
-    if (bind(listen_sock, (struct sockaddr *)&serv_addr, sizeof serv_addr) <
-        0) {
-        tea_log("failed to bind socket : %s\n", strerror(errno));
-        return 0;
-    }
-
-    if (listen(listen_sock, 1) < 0) {
-        tea_log("failed to listen socket : %s\n", strerror(errno));
-    }
-
-    for (;;) {
-        struct tea_msg msg;
-        socklen_t clilen;
-        errno = 0;
-
-        tea_log("waiting for connection \n");
-
-        clilen = sizeof cli_addr;
-        if ((conn = accept(listen_sock, (struct sockaddr *)&cli_addr,
-                           &clilen)) < 0) {
-            tea_log("accept() failed : %s\n", strerror(errno));
-            continue;
-        }
-
-        tea_log("connection accepted\n");
-
-        ssize_t bytes_recv;
-        while ((bytes_recv = recv(conn, &msg, sizeof msg, 0)) > 0) {
-
-            tea_log("bytes recv %zd\n", bytes_recv);
-
-            if (msg.magic != TEA_MAGIC) {
-                tea_log("invalid message received. ignoring\n");
-                continue;
-            }
-
-            switch (msg.cmd) {
-            case TEA_CMD_DUMP:
-                tea_log("taking a dump\n");
-                tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
-                break;
-            default:
-                tea_log("invalid command\n");
-                break;
-            }
-        }
-
-        tea_log("after while, bytes recv %zd\n", bytes_recv);
-
-        if (errno) {
-            tea_log("recv() failed : %s\n", strerror(errno));
-        }
-
-        close(conn);
-    }
-
-    close(listen_sock);
-
-    return 0;
-}
 
 /* instantiate a tea device object (TeaState) */
 static void tea_realize(PCIDevice *pci_dev, Error **errp)
@@ -118,7 +37,7 @@ static void tea_realize(PCIDevice *pci_dev, Error **errp)
     pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
 
     /* hotplug dump */
-    if ((err = pthread_create(&dump_thread, NULL, dump_thread_start, dev))) {
+    if ((err = pthread_create(&dump_thread, NULL, server_thread_start, dev))) {
         tea_log("failed to create dump thread: %s\n", strerror(err));
     }
 

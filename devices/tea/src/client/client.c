@@ -16,18 +16,18 @@ int main(int argc, char **argv) {
   struct tea_msg msg;
 
   if (argc < 2) {
-    printf("smt\n");
-    return 1;
+    printf("usage: ./client <hostname>\n");
+    return EINVAL;
   }
 
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    perror("failed to create socket");
-    return 1;
+    perror("socket() failed");
+    return errno;
   }
 
   if (!(server = gethostbyname(argv[1]))) {
-    herror("failed to get host by name");
-    return 1;
+    herror("gethostbyname() failed");
+    return errno;
   }
 
   memset(&addr, 0, sizeof addr);
@@ -35,21 +35,29 @@ int main(int argc, char **argv) {
   addr.sin_port = htons(TEA_SERVER_PORT);
   memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
+  printf("connecting... ");
+  fflush(stdout);
+
   addrlen = sizeof addr;
   if (connect(sock, (struct sockaddr *)&addr, addrlen) < 0) {
-    perror("failed to connect");
-    return 1;
+    perror("connect() failed");
+    return errno;
   }
+
+  printf("done\n");
 
   msg.magic = TEA_MAGIC;
   msg.cmd = TEA_CMD_DUMP;
 
+  printf("requesting dump... ");
+  fflush(stdout);
+
   if (send(sock, &msg, sizeof msg, 0) < 0) {
-    perror("failed to send msg");
-    return 1;
+    perror("send() failed");
+    return errno;
   }
 
-  printf("msg sent\n");
+  printf("done\n");
 
   close(sock);
 

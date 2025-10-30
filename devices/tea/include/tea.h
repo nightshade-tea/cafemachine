@@ -18,7 +18,7 @@
 #define TEA_PAGE_SZ 4096
 #define TEA_DUMP_PAGES_ON_ERR 0
 
-#define TEA_SERVER_PORT 0x7ea
+#define TEA_SERVER_PORT 0x77ea
 #define TEA_MAGIC 0x1ced7ea
 
 enum tea_cmd { TEA_CMD_DUMP };
