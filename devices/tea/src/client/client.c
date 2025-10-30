@@ -47,7 +47,9 @@ int main(int argc, char **argv) {
   printf("done\n");
 
   msg.magic = TEA_MAGIC;
-  msg.cmd = TEA_CMD_DUMP;
+  msg.type = TEA_CMD_DUMP_STRICT;
+  msg.start = 0;
+  strcpy(msg.basename, "tea");
 
   printf("requesting dump... ");
   fflush(stdout);
@@ -57,7 +59,24 @@ int main(int argc, char **argv) {
     return errno;
   }
 
-  printf("done\n");
+  if (recv(sock, &msg, sizeof msg, 0) < 0) {
+    perror("recv() failed");
+    return errno;
+  }
+
+  if (msg.magic != TEA_MAGIC) {
+    printf("received invalid msg\n");
+    return errno;
+  }
+
+  switch (msg.type) {
+  case TEA_SUCCESS:
+    printf("done\n");
+    break;
+  default:
+    printf("failed\n");
+    break;
+  }
 
   close(sock);
 

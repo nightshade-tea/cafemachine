@@ -1,6 +1,8 @@
 #ifndef TEA_H
 #define TEA_H
 
+#include <stdint.h>
+
 /* device attributes */
 #define TEA_HW_NAME "tea"
 #define TEA_VENDOR_ID 0x1ced
@@ -21,11 +23,20 @@
 #define TEA_SERVER_PORT 0x77ea
 #define TEA_MAGIC 0x1ced7ea
 
-enum tea_cmd { TEA_CMD_DUMP };
+enum tea_msg_t {
+    TEA_CMD_DUMP_STRICT,
+    TEA_CMD_DUMP_RELAXED,
+    TEA_SUCCESS,
+    TEA_FAIL
+};
 
 struct tea_msg {
     int magic;
-    int cmd;
+    int type;
+
+    uint64_t start;
+    uint64_t end;
+    char basename[TEA_MAX_BASENAME_LEN];
 };
 
 #endif /* TEA_H */

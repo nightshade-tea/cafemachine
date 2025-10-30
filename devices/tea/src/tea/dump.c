@@ -108,8 +108,8 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
         first += readsz;
     }
 
-    tea_log("finished memory dump\n");
     fclose(dumpf);
+    tea_log("finished memory dump\n");
     return 0;
 }
 

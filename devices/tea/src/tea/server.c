@@ -9,6 +9,16 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+static void tea_send(int sock, enum tea_msg_t type)
+{
+    struct tea_msg msg;
+
+    msg.magic = TEA_MAGIC;
+    msg.type = type;
+
+    send(sock, &msg, sizeof msg, MSG_DONTWAIT);
+}
+
 static int start_listening(void)
 {
     struct sockaddr_in serv_addr;
@@ -45,17 +55,24 @@ static ssize_t msg_handler(TeaState *dev, int conn)
     while ((recvb = recv(conn, &msg, sizeof msg, 0)) > 0) {
         if (msg.magic != TEA_MAGIC) {
             tea_log("invalid message received. ignoring\n");
+            tea_send(conn, TEA_FAIL);
             continue;
         }
 
-        switch (msg.cmd) {
-        case TEA_CMD_DUMP:
-            tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
+        switch (msg.type) {
+        case TEA_CMD_DUMP_STRICT:
+            tea_dump_mem_strict(dev, msg.basename, msg.start);
+            break;
+        case TEA_CMD_DUMP_RELAXED:
+            tea_dump_mem_relaxed(dev, msg.basename, msg.start, msg.end);
             break;
         default:
             tea_log("invalid command\n");
-            break;
+            tea_send(conn, TEA_FAIL);
+            continue;
         }
+
+        tea_send(conn, TEA_SUCCESS);
     }
 
     return recvb;
