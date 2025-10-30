@@ -12,9 +12,20 @@
 #define TEA_DEFAULT_DUMP_BASENAME "teadump"
 #define TEA_MAX_BASENAME_LEN 8
 #define TEA_DUMP_TOLERANCE                                                     \
-    1024 /* number of allowed sequential failed reads                          \
-          */
+    1 /* number of allowed sequential failed reads                             \
+       */
+#define TEA_HOTPLUG_DUMP 0
 #define TEA_PAGE_SZ 4096
-#define TEA_DUMP_PAGES_ON_ERR 1
+#define TEA_DUMP_PAGES_ON_ERR 0
+
+#define TEA_SERVER_PORT 0x7ea
+#define TEA_MAGIC 0x1ced7ea
+
+enum tea_cmd { TEA_CMD_DUMP };
+
+struct tea_msg {
+    int magic;
+    int cmd;
+};
 
 #endif /* TEA_H */
