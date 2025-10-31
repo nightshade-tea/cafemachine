@@ -1,5 +1,5 @@
 PROGRAMS := client
-CFLAGS   := -Wall -Wextra -g -I../../include
+CFLAGS   := -Wall -Wextra -g -I. -I../../include
 
 all: format $(PROGRAMS)
 
