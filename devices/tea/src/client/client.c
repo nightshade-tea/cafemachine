@@ -3,6 +3,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -10,10 +11,11 @@
 
 int main(int argc, char **argv) {
   int sock;
-  socklen_t addrlen;
   struct sockaddr_in addr;
+  socklen_t addrlen;
   struct hostent *server;
-  struct tea_msg msg;
+  struct tea_request req;
+  struct tea_response resp;
 
   if (argc < 2) {
     printf("usage: ./client <hostname>\n");
@@ -46,39 +48,31 @@ int main(int argc, char **argv) {
 
   printf("done\n");
 
-  msg.magic = TEA_MAGIC;
-  msg.type = TEA_CMD_DUMP_STRICT;
-  msg.start = 0;
-  strcpy(msg.basename, "tea");
+  req.magic = TEA_MAGIC;
+  req.cmd = TEA_DUMP_STRICT;
+  req.start = 0;
+  strncpy(req.basename, "tea", TEA_MAX_BASENAME_LEN);
 
   printf("requesting dump... ");
   fflush(stdout);
 
-  if (send(sock, &msg, sizeof msg, 0) < 0) {
+  if (send(sock, &req, sizeof req, 0) < 0) {
     perror("send() failed");
     return errno;
   }
 
-  if (recv(sock, &msg, sizeof msg, 0) < 0) {
+  if (recv(sock, &resp, sizeof resp, 0) < 0) {
     perror("recv() failed");
     return errno;
   }
 
-  if (msg.magic != TEA_MAGIC) {
-    printf("received invalid msg\n");
-    return errno;
+  if (resp.magic != TEA_MAGIC) {
+    printf("received invalid response\n");
+    return EXIT_FAILURE;
   }
 
-  switch (msg.type) {
-  case TEA_SUCCESS:
-    printf("done\n");
-    break;
-  default:
-    printf("failed\n");
-    break;
-  }
-
+  puts(resp.err_msg);
   close(sock);
 
-  return 0;
+  return resp.status;
 }

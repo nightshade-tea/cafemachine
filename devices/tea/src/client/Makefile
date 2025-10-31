@@ -1,10 +1,10 @@
-MAIN_PROGRAMS    := client
-CFLAGS           := -Wall -Wextra -g -I../../include
+PROGRAMS := client
+CFLAGS   := -Wall -Wextra -g -I../../include
 
-all: format $(MAIN_PROGRAMS)
+all: format $(PROGRAMS)
 
 clean:
-	rm -rf $(MAIN_PROGRAMS)
+	rm -rf $(PROGRAMS)
 
 format:
 	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
