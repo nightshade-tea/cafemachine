@@ -1,12 +1,13 @@
-PROGRAMS := client
-CFLAGS   := -Wall -Wextra -g -I. -I../../include
+MAIN := client
+CC := gcc
+CFLAGS := -Wall -Wextra -g -I. -I../../include
 
-all: format $(PROGRAMS)
+$(MAIN): $(patsubst %.c,%.o,$(wildcard *.c))
 
 clean:
-	rm -rf $(PROGRAMS)
+	rm -rf $(MAIN) *.o
 
 format:
-	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
+	find . -iname '*.[hc]' | xargs clang-format -i
 
-.PHONY: all clean format
+.PHONY: clean format
