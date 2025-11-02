@@ -42,17 +42,18 @@ int parse_flags(int argc, char *argv[], struct tea_request *req,
       break;
 
     case FLAG_SHORT_START:
-      *set_flags |= FLAG_START;
-      __attribute__((__fallthrough__));
-
     case FLAG_SHORT_END:
-      *set_flags |= FLAG_END;
-
       errno = 0;
-      if (opt == FLAG_SHORT_START)
+
+      if (opt == FLAG_SHORT_START) {
+        *set_flags |= FLAG_START;
         req->start = strtoull(optarg, NULL, 0);
-      else
+      }
+
+      else {
+        *set_flags |= FLAG_END;
         req->end = strtoull(optarg, NULL, 0);
+      }
 
       if (errno) {
         perror("failed to parse address\n");
