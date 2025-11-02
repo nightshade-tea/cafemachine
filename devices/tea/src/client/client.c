@@ -70,7 +70,7 @@ static enum tea_status send_req(int sock, const struct tea_request *req) {
   return resp.status;
 }
 
-static int dump(int argc, char *argv[], const char *name) {
+static int dump(int argc, char *argv[]) {
   const char *hostname;
   struct tea_request req = {0};
   int sock;
@@ -82,31 +82,40 @@ static int dump(int argc, char *argv[], const char *name) {
   req.magic = TEA_MAGIC;
   req.cmd = TEA_DUMP_STRICT;
 
-  if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0)
+  if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0) {
+    ask_for_cmd_help(argv[0], "dump");
     return -num_flags;
+  }
+
+  if ((set_flags & FLAG_STRICT) && (set_flags & FLAG_RELAXED)) {
+    fprintf(stderr, "conflicting options '--" FLAG_LONG_STRICT
+                    "' and '--" FLAG_LONG_RELAXED "' \n");
+    ask_for_cmd_help(argv[0], "dump");
+    return EINVAL;
+  }
 
   if ((set_flags & FLAG_RELAXED) && !(set_flags & FLAG_END)) {
     fprintf(stderr, "'--" FLAG_LONG_END "' is mandatory for relaxed mode\n");
-    ask_for_cmd_help(name, "get");
+    ask_for_cmd_help(argv[0], "dump");
     return EINVAL;
   }
 
-  if (argc - num_flags == 0) {
+  if ((optind + 1) >= argc) {
     fprintf(stderr, "missing hostname argument\n");
-    ask_for_cmd_help(name, "get");
+    ask_for_cmd_help(argv[0], "dump");
     return EINVAL;
   }
 
-  if (argc - num_flags > 1) {
+  if (argc - (optind + 1) > 1) {
     fprintf(stderr, "too many arguments\n");
-    ask_for_cmd_help(name, "get");
+    ask_for_cmd_help(argv[0], "dump");
     return EINVAL;
   }
 
   if (!(set_flags & (FLAG_STRICT | FLAG_RELAXED)))
     printf("no mode specified, defaulting to " FLAG_LONG_STRICT "\n");
 
-  hostname = argv[optind];
+  hostname = argv[(optind + 1)];
 
   if ((sock = connect_tea(hostname)) < 0)
     return sock;
@@ -117,7 +126,7 @@ static int dump(int argc, char *argv[], const char *name) {
   return err;
 }
 
-static int get(int argc, char *argv[], const char *name) {
+static int get(int argc, char *argv[]) {
   const char *hostname;
   struct tea_request req = {0};
   int sock;
@@ -129,22 +138,30 @@ static int get(int argc, char *argv[], const char *name) {
   req.magic = TEA_MAGIC;
   req.cmd = TEA_RECV_DUMP;
 
-  if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0)
+  if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0) {
+    ask_for_cmd_help(argv[0], "get");
     return -num_flags;
+  }
 
-  if (argc - num_flags == 0) {
+  if (set_flags & (~FLAG_BASENAME)) {
+    fprintf(stderr, "invalid flags\n");
+    ask_for_cmd_help(argv[0], "get");
+    return EINVAL;
+  }
+
+  if ((optind + 1) >= argc) {
     fprintf(stderr, "missing hostname argument\n");
-    ask_for_cmd_help(name, "get");
+    ask_for_cmd_help(argv[0], "get");
     return EINVAL;
   }
 
-  if (argc - num_flags > 1) {
+  if (argc - (optind + 1) > 1) {
     fprintf(stderr, "too many arguments\n");
-    ask_for_cmd_help(name, "get");
+    ask_for_cmd_help(argv[0], "get");
     return EINVAL;
   }
 
-  hostname = argv[optind];
+  hostname = argv[(optind + 1)];
 
   if ((sock = connect_tea(hostname)) < 0)
     return sock;
@@ -158,66 +175,57 @@ static int get(int argc, char *argv[], const char *name) {
   return err;
 }
 
-static int help(int argc, char *argv[], const char *name) {
-  if (argc > 1) {
+static int help(int argc, char *argv[]) {
+  if (argc > 3) {
     fprintf(stderr, "too many arguments\n");
-    ask_for_cmd_help(name, "help");
+    ask_for_cmd_help(argv[0], "help");
 
     return EINVAL;
   }
 
-  if (argc == 0) {
-    usage(name);
+  if (argc == 2) {
+    usage(argv[0]);
     return 0;
   }
 
-  if (!strcmp(argv[0], "dump")) {
-    usage_dump(name);
+  if (!strcmp(argv[2], "dump")) {
+    usage_dump(argv[0]);
     return 0;
   }
 
-  else if (!strcmp(argv[0], "get")) {
-    usage_get(name);
+  else if (!strcmp(argv[2], "get")) {
+    usage_get(argv[0]);
     return 0;
   }
 
-  else if (!strcmp(argv[0], "help")) {
-    usage_help(name);
+  else if (!strcmp(argv[2], "help")) {
+    usage_help(argv[0]);
     return 0;
   }
 
-  fprintf(stderr, "unknown command '%s'\n", argv[0]);
-  ask_for_cmd_help(name, "help");
+  fprintf(stderr, "unknown command '%s'\n", argv[2]);
+  ask_for_cmd_help(argv[0], "help");
 
   return EINVAL;
 }
 
 int main(int argc, char *argv[]) {
-  const char *name;
-  const char *command;
-
-  name = argv[0];
-
   if (argc < 2) {
-    usage(name);
+    usage(argv[0]);
     return EINVAL;
   }
 
-  command = argv[1];
-  argc -= 2;
-  argv += 2;
+  if (!strcmp(argv[1], "dump"))
+    return dump(argc, argv);
 
-  if (!strcmp(command, "dump"))
-    return dump(argc, argv, name);
+  else if (!strcmp(argv[1], "get"))
+    return get(argc, argv);
 
-  else if (!strcmp(command, "get"))
-    return get(argc, argv, name);
+  else if (!strcmp(argv[1], "help"))
+    return help(argc, argv);
 
-  else if (!strcmp(command, "help"))
-    return help(argc, argv, name);
-
-  fprintf(stderr, "unknown command '%s'\n", command);
-  ask_for_help(name);
+  fprintf(stderr, "unknown command '%s'\n", argv[1]);
+  ask_for_help(argv[0]);
 
   return EINVAL;
 }

@@ -63,9 +63,7 @@ int parse_flags(int argc, char *argv[], struct tea_request *req,
 
     case FLAG_SHORT_BASENAME:
       if (strlen(optarg) > sizeof req->basename) {
-        fprintf(stderr,
-                "basename is too long, should be at most %zu characters\n",
-                sizeof req->basename);
+        fprintf(stderr, "basename is too long\n");
         return -EINVAL;
       }
 
@@ -74,7 +72,6 @@ int parse_flags(int argc, char *argv[], struct tea_request *req,
       break;
 
     default:
-      fprintf(stderr, "invalid or unknown flag\n");
       return -EINVAL;
     }
   }
