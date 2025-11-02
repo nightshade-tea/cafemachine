@@ -1,35 +1,38 @@
 #include "usage.h"
+#include "flags.h"
 #include "tea.h"
 #include <stdio.h>
 
-#define STR(x) _STR(x)
-#define _STR(x) #x
 #define DUMP_CMD_DESC "trigger a memory dump"
 #define GET_CMD_DESC "download a memory dump from the " TEA_HW_NAME " device"
 #define HELP_CMD_DESC "display help information"
 
+#define STR(x) _STR(x)
+#define _STR(x) #x
+
 static void desc_flag_strict() {
-  printf("\n  -S, --strict\n");
-  printf("    stop after TEA_DUMP_TOLERANCE consecutive failed reads\n");
+  printf("\n  -%c, --" FLAG_LONG_STRICT "\n", FLAG_SHORT_STRICT);
+  printf("    stop after " STR(
+      TEA_DUMP_TOLERANCE) " consecutive failed reads (TEA_DUMP_TOLERANCE)\n");
 }
 
 static void desc_flag_relaxed() {
-  printf("\n  -R, --relaxed\n");
+  printf("\n  -%c, --" FLAG_LONG_RELAXED "\n", FLAG_SHORT_RELAXED);
   printf("    ignore failed reads\n");
 }
 
 static void desc_flag_start() {
-  printf("\n  -B, --start\n");
+  printf("\n  -%c, --" FLAG_LONG_START "\n", FLAG_SHORT_START);
   printf("    start dump from this physical address\n");
 }
 
 static void desc_flag_end() {
-  printf("\n  -E, --end\n");
+  printf("\n  -%c, --" FLAG_LONG_END "\n", FLAG_SHORT_END);
   printf("    stop dump after reaching this physical address\n");
 }
 
 static void desc_flag_basename() {
-  printf("\n  -N, --basename\n");
+  printf("\n  -%c, --" FLAG_LONG_BASENAME "\n", FLAG_SHORT_BASENAME);
   printf("    basename for dump file (max " STR(
       TEA_MAX_BASENAME_LEN) " characters)\n");
 }
