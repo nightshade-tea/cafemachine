@@ -5,6 +5,7 @@
 
 /* display general usage information */
 void ask_for_help(const char *name);
+void ask_for_cmd_help(const char *name, const char *cmd);
 void usage(const char *name);
 
 /* usage for specific commands */
