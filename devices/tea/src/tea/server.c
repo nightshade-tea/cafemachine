@@ -128,7 +128,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
 
     if ((dumpf = open(filename, O_RDONLY)) < 0) {
         tea_log("open() failed %s\n", strerror(errno));
-        tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_DUMP);
+        tea_resp(conn, TEA_FAIL, TEA_ERR_NOT_FOUND);
         return;
     }
 
