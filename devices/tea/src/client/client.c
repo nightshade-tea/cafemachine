@@ -49,23 +49,83 @@ static int connect_tea(const char *hostname) {
   return sock;
 }
 
+static int tea_send(int sock, enum tea_msg_t type, const void *payload,
+                    uint64_t payloadsz) {
+  struct tea_header header = {
+      .magic = TEA_MAGIC,
+      .type = type,
+      .payloadsz = payloadsz,
+  };
+
+  if (send(sock, &header, sizeof header, 0) < sizeof header) {
+    return -1;
+  }
+
+  uint64_t offset = 0;
+  while (offset < payloadsz) {
+    ssize_t bytes_sent;
+
+    if ((bytes_sent = send(sock, payload + offset, payloadsz - offset, 0)) <
+        0) {
+      return -1;
+    }
+
+    offset += bytes_sent;
+  }
+
+  return offset;
+}
+
+static int tea_recv(int sock, void *buf, uint64_t bufsz) {
+  struct tea_header header = {0};
+
+  ssize_t ret;
+  if ((ret = recv(sock, &header, sizeof header, 0)) < 0) {
+    fprintf(stderr, "recv() failed : %ld\n", ret);
+    return ret;
+  }
+
+  if (!ret)
+    return ret;
+
+  if (header.magic != TEA_MAGIC) {
+    fprintf(stderr, "header has invalid magic\n");
+    return -1;
+  }
+
+  if (bufsz < header.payloadsz) {
+    fprintf(stderr, "not enough space on buffer\n");
+    return -1;
+  }
+
+  uint64_t offset = 0;
+  while (offset < header.payloadsz) {
+    ssize_t bytes_recv;
+
+    if ((bytes_recv = recv(sock, buf + offset, header.payloadsz - offset, 0)) <
+        0) {
+      perror("recv() failed");
+      return -1;
+    }
+
+    offset += bytes_recv;
+  }
+
+  return offset;
+}
+
 static enum tea_status send_req(int sock, const struct tea_request *req) {
   printf("sending request... ");
   fflush(stdout);
 
-  if (send(sock, req, sizeof(*req), 0) < 0) {
-    perror("send() failed");
+  if (tea_send(sock, TEA_REQ, req, sizeof(*req)) < 0) {
+    perror("tea_send() failed");
     return TEA_FAIL;
   }
 
   struct tea_response resp;
-  if (recv(sock, &resp, sizeof(resp), 0) < 0) {
-    perror("recv() failed");
-    return TEA_FAIL;
-  }
-
-  if (resp.magic != TEA_MAGIC) {
-    fprintf(stderr, "response has invalid magic value\n");
+  if (tea_recv(sock, &resp, sizeof(resp)) < 0) {
+    perror("tea_recv() failed");
     return TEA_FAIL;
   }
 
@@ -82,7 +142,6 @@ static int dump(int argc, char *argv[]) {
   int err;
 
   /* default values */
-  req.magic = TEA_MAGIC;
   req.cmd = TEA_DUMP_STRICT;
 
   if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0) {
@@ -133,10 +192,11 @@ static int get(int argc, char *argv[]) {
   const char *hostname;
   char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)] = {0};
   struct tea_request req = {0};
-  struct tea_msg msg;
+  struct tea_response res = {0};
+  struct tea_header header = {0};
   ssize_t total_bytes_recv;
   size_t basename_len;
-  off_t dumpsz;
+  uint64_t dumpsz;
   int sock;
   int dumpf;
   int num_flags;
@@ -146,7 +206,6 @@ static int get(int argc, char *argv[]) {
   void *buf;
 
   /* default values */
-  req.magic = TEA_MAGIC;
   req.cmd = TEA_RECV_DUMP;
 
   if ((num_flags = parse_flags(argc, argv, &req, &set_flags)) < 0) {
@@ -180,23 +239,35 @@ static int get(int argc, char *argv[]) {
   printf("sending request... ");
   fflush(stdout);
 
-  if (send(sock, &req, sizeof req, 0) < 0) {
-    perror("send() failed");
-    return errno;
+  if (tea_send(sock, TEA_REQ, &req, sizeof req) <= 0) {
+    fprintf(stderr, "tea_send() failed");
+    goto close_sock;
   }
 
-  printf("done\n");
-  printf("waiting for dump size... ");
-  fflush(stdout);
-
-  if (recv(sock, &msg, sizeof(msg), 0) < 0) {
+  /* wait for response */
+  if (recv(sock, &header, sizeof header, 0) <= 0) {
     perror("recv() failed");
-    return errno;
+    goto close_sock;
   }
 
-  memcpy(&dumpsz, msg.data, MIN(msg.datasz, sizeof dumpsz));
+  if (header.magic != TEA_MAGIC) {
+    fprintf(stderr, "invalid header");
+    goto close_sock;
+  }
 
-  printf("~%jd Gb\n", dumpsz >> 30);
+  if (header.type == TEA_RES) {
+    if (recv(sock, &res, sizeof res, 0) < 0) {
+      perror("recv() failed");
+    } else {
+      fprintf(stderr, "err: %s", res.err_msg);
+    }
+
+    goto close_sock;
+  }
+
+  dumpsz = header.payloadsz;
+
+  printf("dump size: ~%jd Gb\n", dumpsz >> 30);
   fflush(stdout);
 
   /* creating filename and opening it */
@@ -205,19 +276,19 @@ static int get(int argc, char *argv[]) {
   memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof(TEA_DUMP_EXT));
   if ((dumpf = open(filename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR)) < 0) {
     perror("open() failed");
-    return errno;
+    goto close_sock;
   }
 
   /* allocate buffer for optimal receiving rate */
   optlen = sizeof bufsz;
   if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufsz, &optlen) < 0) {
     perror("getsockopt() failed");
-    return errno;
+    goto close_file;
   }
 
   if (!(buf = malloc(bufsz))) {
     perror("malloc() failed");
-    return errno;
+    goto close_file;
   }
 
   printf("receiving dump file... ");
@@ -230,21 +301,30 @@ static int get(int argc, char *argv[]) {
 
     if ((bytes_recv = recv(sock, buf, bufsz, 0)) < 0) {
       perror("recv() failed");
-      continue;
+      goto free_buf;
     }
 
     if (write(dumpf, buf, bytes_recv) < bytes_recv) {
       perror("write() failed");
-      return errno;
+      goto free_buf;
     }
 
     total_bytes_recv += bytes_recv;
   }
 
+  if (tea_recv(sock, &res, sizeof res) <= 0) {
+    perror("tea_recv() failed");
+    goto free_buf;
+  }
+
   printf("done\n");
   fflush(stdout);
 
+free_buf:
+  free(buf);
+close_file:
   close(dumpf);
+close_sock:
   close(sock);
 
   return 0;

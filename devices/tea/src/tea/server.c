@@ -10,15 +10,74 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+static ssize_t tea_send(int sock, enum tea_msg_t type, void *payload,
+                        uint64_t payloadsz)
+{
+    struct tea_header header = {
+        .magic = TEA_MAGIC, .type = type, .payloadsz = payloadsz};
+
+    if (send(sock, &header, sizeof header, 0) < sizeof header) {
+        tea_log("send() failed");
+        return -1;
+    }
+
+    uint64_t offset = 0;
+    while (offset < payloadsz) {
+        ssize_t bytes_sent;
+
+        if ((bytes_sent = send(sock, payload + offset, payloadsz - offset, 0)) <
+            0) {
+            return -errno;
+        }
+
+        offset += bytes_sent;
+    }
+
+    return offset;
+}
+
+static ssize_t tea_recv(int sock, void *buf, uint64_t bufsz)
+{
+    struct tea_header header = {0};
+
+    ssize_t ret;
+    if ((ret = recv(sock, &header, sizeof header, 0)) <= 0) {
+        tea_log("recv() failed %ld %s\n", ret, strerror(errno));
+        return ret;
+    }
+
+    if (header.magic != TEA_MAGIC) {
+        tea_log("header has invalid magic\n");
+        return -1;
+    }
+
+    if (bufsz < header.payloadsz) {
+        tea_log("not enough space on buffer\n");
+        return -1;
+    }
+
+    uint64_t offset = 0;
+    while (offset < header.payloadsz) {
+        ssize_t bytes_recv;
+
+        if ((bytes_recv =
+                 recv(sock, buf + offset, header.payloadsz - offset, 0)) < 0) {
+            perror("recv() failed");
+            return -1;
+        }
+
+        offset += bytes_recv;
+    }
+
+    return offset;
+}
+
 static void tea_resp(int sock, enum tea_status status, const char *err_msg)
 {
-    struct tea_response resp = {
-        .magic = TEA_MAGIC,
-        .status = status,
-    };
+    struct tea_response resp = {.status = status};
 
     strncpy(resp.err_msg, err_msg, TEA_MAX_ERR_MSG_LEN);
-    send(sock, &resp, sizeof resp, MSG_DONTWAIT);
+    tea_send(sock, TEA_RES, &resp, sizeof resp);
 }
 
 static int create_listen_sock(void)
@@ -56,8 +115,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
     char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
     int dumpf;
     struct stat stat;
-    struct tea_msg msg;
-    off_t dumpsz, offset;
+    off_t dumpsz;
     void *dump;
 
     mount_filename(basename, filename);
@@ -71,7 +129,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
     if (fstat(dumpf, &stat) < 0) {
         tea_log("fstat() failed %s\n", strerror(errno));
         tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        return;
+        goto close_file;
     }
 
     dumpsz = stat.st_size;
@@ -80,41 +138,26 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
         MAP_FAILED) {
         tea_log("mmap() failed %s\n", strerror(errno));
         tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        return;
+        goto close_file;
     }
 
     if (madvise(dump, dumpsz, MADV_SEQUENTIAL) < 0) {
         tea_log("madvise() failed %s\n", strerror(errno));
         tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        return;
+        goto unmap_file;
     }
 
-    /* sending dump file size */
-    msg.magic = TEA_MAGIC;
-    *((off_t *)msg.data) = dumpsz;
-    msg.datasz = sizeof dumpsz;
-
-    if (send(conn, &msg, sizeof msg, 0) < 0) {
-        tea_log("send() failed: %s\n", strerror(errno));
-        return;
-    }
-
-    /* sending dump file */
-    offset = 0;
     tea_log("sending dump...\n");
-    while (offset < dumpsz) {
-        ssize_t bytes_sent;
 
-        if ((bytes_sent = send(conn, dump + offset, dumpsz - offset, 0)) < 0) {
-            tea_log("send() failed: %s\n", strerror(errno));
-            continue;
-        }
-
-        offset += bytes_sent;
+    if (tea_send(conn, TEA_DATA, dump, dumpsz) < 0) {
+        tea_log("failed : %s\n", strerror(errno));
+    } else {
+        tea_log("dump sent!\n");
     }
-    tea_log("dump sent!\n");
 
+unmap_file:
     munmap(dump, dumpsz);
+close_file:
     close(dumpf);
 
     return;
@@ -127,7 +170,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
 
     errno = 0;
 
-    while ((recvb = recv(conn, &req, sizeof req, 0)) > 0) {
+    while ((recvb = tea_recv(conn, &req, sizeof req)) > 0) {
         if (recvb != sizeof req) {
             tea_log("invalid request received: " TEA_ERR_INVALID_SZ
                     " (recvb=%zu)\n",
@@ -136,13 +179,15 @@ static ssize_t req_handler(TeaState *dev, int conn)
             continue;
         }
 
+        /*
         if (req.magic != TEA_MAGIC) {
-            tea_log("invalid request received: " TEA_ERR_INVALID_MV
-                    " (magic=%#" PRIx32 ")\n",
-                    req.magic);
-            tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_MV);
-            continue;
+          tea_log("invalid request received: " TEA_ERR_INVALID_MV
+                  " (magic=%#" PRIx32 ")\n",
+                  req.magic);
+          tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_MV);
+          continue;
         }
+        */
 
         switch (req.cmd) {
         case TEA_DUMP_STRICT:
@@ -165,7 +210,9 @@ static ssize_t req_handler(TeaState *dev, int conn)
             continue;
         }
 
+        tea_log("sending success response\n");
         tea_resp(conn, TEA_SUCCESS, TEA_ERR_SUCCESS);
+        tea_log("sent success response\n");
     }
 
     return recvb;

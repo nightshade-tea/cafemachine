@@ -40,8 +40,15 @@ enum tea_cmd { TEA_DUMP_STRICT, TEA_DUMP_RELAXED, TEA_RECV_DUMP, TEA_CMD_CNT };
 
 enum tea_status { TEA_SUCCESS, TEA_FAIL, TEA_STATUS_CNT };
 
-struct __attribute__((packed)) tea_request {
+enum tea_msg_t { TEA_RES, TEA_REQ, TEA_DATA };
+
+struct __attribute__((packed)) tea_header {
     uint32_t magic;
+    enum tea_msg_t type;
+    uint64_t payloadsz;
+};
+
+struct __attribute__((packed)) tea_request {
     enum tea_cmd cmd;
     uint64_t start;
     uint64_t end;
@@ -49,15 +56,7 @@ struct __attribute__((packed)) tea_request {
 };
 
 struct __attribute__((packed)) tea_response {
-    uint32_t magic;
     enum tea_status status;
     char err_msg[TEA_MAX_ERR_MSG_LEN];
 };
-
-struct __attribute__((packed)) tea_msg {
-    uint32_t magic;
-    uint8_t data[TEA_MSG_MAX_DATA];
-    uint32_t datasz;
-};
-
 #endif /* TEA_H */
