@@ -57,7 +57,6 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
     int dumpf;
     struct stat stat;
     struct tea_msg msg;
-    struct tea_response res;
     off_t dumpsz, offset;
     void *dump;
 
@@ -90,34 +89,30 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
         return;
     }
 
+    /* sending dump file size */
     msg.magic = TEA_MAGIC;
     *((off_t *)msg.data) = dumpsz;
     msg.datasz = sizeof dumpsz;
 
-    while ((res.magic != TEA_MAGIC) || (res.status != TEA_SUCCESS)) {
-        if (send(conn, &msg, sizeof msg, 0) < 0) {
-            tea_log("send() failed: %s\n", strerror(errno));
-            continue;
-        }
-
-        if (recv(conn, &res, sizeof res, 0) < 0) {
-            tea_log("recv() failed: %s\n", strerror(errno));
-        }
+    if (send(conn, &msg, sizeof msg, 0) < 0) {
+        tea_log("send() failed: %s\n", strerror(errno));
+        return;
     }
 
+    /* sending dump file */
     offset = 0;
+    tea_log("sending dump...\n");
     while (offset < dumpsz) {
         ssize_t bytes_sent;
 
-        bytes_sent = send(conn, dump + offset, dumpsz - offset, 0);
-
-        if (bytes_sent < 0) {
+        if ((bytes_sent = send(conn, dump + offset, dumpsz - offset, 0)) < 0) {
             tea_log("send() failed: %s\n", strerror(errno));
             continue;
         }
 
         offset += bytes_sent;
     }
+    tea_log("dump sent!\n");
 
     munmap(dump, dumpsz);
     close(dumpf);

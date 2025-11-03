@@ -131,12 +131,19 @@ static int dump(int argc, char *argv[]) {
 
 static int get(int argc, char *argv[]) {
   const char *hostname;
+  char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)] = {0};
   struct tea_request req = {0};
-  off_t dumpsz, offset;
+  struct tea_msg msg;
+  ssize_t total_bytes_recv;
+  size_t basename_len;
+  off_t dumpsz;
   int sock;
+  int dumpf;
   int num_flags;
   int set_flags;
-  int err;
+  int bufsz;
+  socklen_t optlen;
+  void *buf;
 
   /* default values */
   req.magic = TEA_MAGIC;
@@ -170,77 +177,77 @@ static int get(int argc, char *argv[]) {
   if ((sock = connect_tea(hostname)) < 0)
     return sock;
 
-  printf("sending request...\n");
+  printf("sending request... ");
+  fflush(stdout);
 
   if (send(sock, &req, sizeof req, 0) < 0) {
     perror("send() failed");
-    return TEA_FAIL;
+    return errno;
   }
 
-  printf("waiting for dump size...\n");
+  printf("done\n");
+  printf("waiting for dump size... ");
+  fflush(stdout);
 
-  struct tea_msg msg;
-  struct tea_response res;
-  res.magic = TEA_MAGIC;
-  while (msg.magic != TEA_MAGIC) {
-    if (recv(sock, &msg, sizeof(msg), 0) < 0) {
-      perror("recv() failed");
-      continue;
-    }
-
-    if (msg.magic != TEA_MAGIC) {
-      res.status = TEA_FAIL;
-    } else {
-      res.status = TEA_SUCCESS;
-    }
-
-    if (send(sock, &res, sizeof(res), 0) < 0) {
-      perror("send() failed");
-    }
+  if (recv(sock, &msg, sizeof(msg), 0) < 0) {
+    perror("recv() failed");
+    return errno;
   }
 
   memcpy(&dumpsz, msg.data, MIN(msg.datasz, sizeof dumpsz));
 
-  printf("dump size: %jd %jd %d bytes\n", dumpsz, *((off_t *)msg.data),
-         msg.datasz);
+  printf("~%jd Gb\n", dumpsz >> 30);
+  fflush(stdout);
 
-  int dumpf;
-  if ((dumpf = open(req.basename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR)) < 0) {
+  /* creating filename and opening it */
+  basename_len = strnlen(req.basename, TEA_MAX_BASENAME_LEN);
+  memcpy(filename, req.basename, basename_len);
+  memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof(TEA_DUMP_EXT));
+  if ((dumpf = open(filename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR)) < 0) {
     perror("open() failed");
     return errno;
   }
 
-  if (ftruncate(dumpf, dumpsz) < 0) {
-    perror("ftruncate() failed");
+  /* allocate buffer for optimal receiving rate */
+  optlen = sizeof bufsz;
+  if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufsz, &optlen) < 0) {
+    perror("getsockopt() failed");
     return errno;
   }
 
-  void *dump;
-  if ((dump = mmap(NULL, dumpsz, PROT_WRITE, MAP_SHARED, dumpf, 0)) ==
-      MAP_FAILED) {
-    perror("mmap() failed");
+  if (!(buf = malloc(bufsz))) {
+    perror("malloc() failed");
     return errno;
   }
 
-  offset = 0;
-  while (offset < dumpsz) {
+  printf("receiving dump file... ");
+  fflush(stdout);
+
+  /* receive dump file */
+  total_bytes_recv = 0;
+  while (total_bytes_recv < dumpsz) {
     ssize_t bytes_recv;
 
-    if ((bytes_recv = recv(sock, dump + offset, dumpsz - offset, 0)) < 0) {
+    if ((bytes_recv = recv(sock, buf, bufsz, 0)) < 0) {
       perror("recv() failed");
       continue;
     }
 
-    offset += bytes_recv;
+    if (write(dumpf, buf, bytes_recv) < bytes_recv) {
+      perror("write() failed");
+      return errno;
+    }
+
+    total_bytes_recv += bytes_recv;
   }
 
-  msync(dump, dumpsz, MS_SYNC);
-  munmap(dump, dumpsz);
+  printf("done\n");
+  fflush(stdout);
 
   close(dumpf);
   close(sock);
 
-  return -1;
+  return 0;
 }
 
 static int help(int argc, char *argv[]) {
