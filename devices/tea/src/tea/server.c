@@ -2,6 +2,7 @@
 #include "dump.h"
 #include "tea_device.h"
 #include "tea_log.h"
+#include "utils.h"
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -49,8 +50,78 @@ static int create_listen_sock(void)
     return sock;
 }
 
-static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN])
+static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
+                          int conn)
 {
+    char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
+    int dumpf;
+    struct stat stat;
+    struct tea_msg msg;
+    struct tea_response res;
+    off_t dumpsz, offset;
+    void *dump;
+
+    mount_filename(basename, filename);
+
+    if ((dumpf = open(filename, O_RDONLY)) < 0) {
+        tea_log("open() failed %s\n", strerror(errno));
+        tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_DUMP);
+        return;
+    }
+
+    if (fstat(dumpf, &stat) < 0) {
+        tea_log("fstat() failed %s\n", strerror(errno));
+        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        return;
+    }
+
+    dumpsz = stat.st_size;
+
+    if ((dump = mmap(NULL, dumpsz, PROT_READ, MAP_SHARED, dumpf, 0)) ==
+        MAP_FAILED) {
+        tea_log("mmap() failed %s\n", strerror(errno));
+        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        return;
+    }
+
+    if (madvise(dump, dumpsz, MADV_SEQUENTIAL) < 0) {
+        tea_log("madvise() failed %s\n", strerror(errno));
+        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        return;
+    }
+
+    msg.magic = TEA_MAGIC;
+    *((off_t *)msg.data) = dumpsz;
+    msg.datasz = sizeof dumpsz;
+
+    while ((res.magic != TEA_MAGIC) || (res.status != TEA_SUCCESS)) {
+        if (send(conn, &msg, sizeof msg, 0) < 0) {
+            tea_log("send() failed: %s\n", strerror(errno));
+            continue;
+        }
+
+        if (recv(conn, &res, sizeof res, 0) < 0) {
+            tea_log("recv() failed: %s\n", strerror(errno));
+        }
+    }
+
+    offset = 0;
+    while (offset < dumpsz) {
+        ssize_t bytes_sent;
+
+        bytes_sent = send(conn, dump + offset, dumpsz - offset, 0);
+
+        if (bytes_sent < 0) {
+            tea_log("send() failed: %s\n", strerror(errno));
+            continue;
+        }
+
+        offset += bytes_sent;
+    }
+
+    munmap(dump, dumpsz);
+    close(dumpf);
+
     return;
 }
 
@@ -88,7 +159,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             break;
 
         case TEA_RECV_DUMP:
-            tea_send_dump(dev, req.basename);
+            tea_send_dump(dev, req.basename, conn);
             break;
 
         default:

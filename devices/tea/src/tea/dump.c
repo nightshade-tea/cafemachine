@@ -1,6 +1,7 @@
 #include "dump.h"
 #include "tea.h"
 #include "tea_log.h"
+#include "utils.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,23 +43,10 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
 {
     // TEA_DUMP_EXT already has a null terminator
     char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
-    size_t basename_len;
     FILE *dumpf;
     uint64_t failed_reads = 0;
 
-    basename_len = strnlen(basename, TEA_MAX_BASENAME_LEN);
-
-    /* if unset, use default value */
-    if (basename_len == 0) {
-        basename = TEA_DEFAULT_DUMP_BASENAME;
-        basename_len = sizeof(TEA_DEFAULT_DUMP_BASENAME) - 1;
-        tea_log("dump filename not set, defaulting to %s%s\n", basename,
-                TEA_DUMP_EXT);
-    }
-
-    /* assemble filename */
-    memcpy(filename, basename, basename_len);
-    memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof(TEA_DUMP_EXT));
+    mount_filename(basename, filename);
 
     tea_log("dump requested for %s\n", filename);
 

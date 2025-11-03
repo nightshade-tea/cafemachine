@@ -27,10 +27,14 @@
 #define TEA_MAX_ERR_MSG_LEN 128
 #define TEA_CONN_BACKLOG 1 /* max sz for the queue of pending connections */
 
+#define TEA_MSG_MAX_DATA 128
+
 #define TEA_ERR_SUCCESS "ok"
 #define TEA_ERR_INVALID_MV "invalid magic value"
 #define TEA_ERR_INVALID_SZ "invalid request size"
 #define TEA_ERR_INVALID_CMD "invalid command"
+#define TEA_ERR_INVALID_DUMP "invalid dump"
+#define TEA_ERR_INTERNAL "internal server error"
 
 enum tea_cmd { TEA_DUMP_STRICT, TEA_DUMP_RELAXED, TEA_RECV_DUMP, TEA_CMD_CNT };
 
@@ -48,6 +52,12 @@ struct __attribute__((packed)) tea_response {
     uint32_t magic;
     enum tea_status status;
     char err_msg[TEA_MAX_ERR_MSG_LEN];
+};
+
+struct __attribute__((packed)) tea_msg {
+    uint32_t magic;
+    uint8_t data[TEA_MSG_MAX_DATA];
+    uint32_t datasz;
 };
 
 #endif /* TEA_H */

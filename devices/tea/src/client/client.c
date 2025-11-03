@@ -2,12 +2,15 @@
 #include "tea.h"
 #include "usage.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -129,6 +132,7 @@ static int dump(int argc, char *argv[]) {
 static int get(int argc, char *argv[]) {
   const char *hostname;
   struct tea_request req = {0};
+  off_t dumpsz, offset;
   int sock;
   int num_flags;
   int set_flags;
@@ -166,13 +170,77 @@ static int get(int argc, char *argv[]) {
   if ((sock = connect_tea(hostname)) < 0)
     return sock;
 
-  err = send_req(sock, &req);
+  printf("sending request...\n");
 
-  /* todo: get dump file */
+  if (send(sock, &req, sizeof req, 0) < 0) {
+    perror("send() failed");
+    return TEA_FAIL;
+  }
 
+  printf("waiting for dump size...\n");
+
+  struct tea_msg msg;
+  struct tea_response res;
+  res.magic = TEA_MAGIC;
+  while (msg.magic != TEA_MAGIC) {
+    if (recv(sock, &msg, sizeof(msg), 0) < 0) {
+      perror("recv() failed");
+      continue;
+    }
+
+    if (msg.magic != TEA_MAGIC) {
+      res.status = TEA_FAIL;
+    } else {
+      res.status = TEA_SUCCESS;
+    }
+
+    if (send(sock, &res, sizeof(res), 0) < 0) {
+      perror("send() failed");
+    }
+  }
+
+  memcpy(&dumpsz, msg.data, MIN(msg.datasz, sizeof dumpsz));
+
+  printf("dump size: %jd %jd %d bytes\n", dumpsz, *((off_t *)msg.data),
+         msg.datasz);
+
+  int dumpf;
+  if ((dumpf = open(req.basename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR)) < 0) {
+    perror("open() failed");
+    return errno;
+  }
+
+  if (ftruncate(dumpf, dumpsz) < 0) {
+    perror("ftruncate() failed");
+    return errno;
+  }
+
+  void *dump;
+  if ((dump = mmap(NULL, dumpsz, PROT_WRITE, MAP_SHARED, dumpf, 0)) ==
+      MAP_FAILED) {
+    perror("mmap() failed");
+    return errno;
+  }
+
+  offset = 0;
+  while (offset < dumpsz) {
+    ssize_t bytes_recv;
+
+    if ((bytes_recv = recv(sock, dump + offset, dumpsz - offset, 0)) < 0) {
+      perror("recv() failed");
+      continue;
+    }
+
+    offset += bytes_recv;
+  }
+
+  msync(dump, dumpsz, MS_SYNC);
+  munmap(dump, dumpsz);
+
+  close(dumpf);
   close(sock);
 
-  return err;
+  return -1;
 }
 
 static int help(int argc, char *argv[]) {
