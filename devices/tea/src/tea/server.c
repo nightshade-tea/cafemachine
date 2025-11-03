@@ -10,24 +10,29 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-static ssize_t tea_send(int sock, enum tea_msg_t type, void *payload,
+static ssize_t tea_send(int sock, enum tea_msg_t type, const void *payload,
                         uint64_t payloadsz)
 {
     struct tea_header header = {
-        .magic = TEA_MAGIC, .type = type, .payloadsz = payloadsz};
+        .magic = TEA_MAGIC,
+        .type = type,
+        .payloadsz = payloadsz,
+    };
 
-    if (send(sock, &header, sizeof header, 0) < sizeof header) {
-        tea_log("send() failed");
-        return -1;
+    ssize_t bytes_sent;
+    if ((bytes_sent = send(sock, &header, sizeof header, 0)) != sizeof header) {
+        tea_log("send() failed : %zd bytes sent : err %s\n", bytes_sent,
+                strerror(errno));
+        return MIN(bytes_sent, 0);
     }
 
     uint64_t offset = 0;
     while (offset < payloadsz) {
-        ssize_t bytes_sent;
 
         if ((bytes_sent = send(sock, payload + offset, payloadsz - offset, 0)) <
             0) {
-            return -errno;
+            tea_log("send() failed");
+            return offset;
         }
 
         offset += bytes_sent;
@@ -36,14 +41,16 @@ static ssize_t tea_send(int sock, enum tea_msg_t type, void *payload,
     return offset;
 }
 
-static ssize_t tea_recv(int sock, void *buf, uint64_t bufsz)
+static size_t tea_recv(int sock, void *buf, uint64_t bufsz)
 {
     struct tea_header header = {0};
 
-    ssize_t ret;
-    if ((ret = recv(sock, &header, sizeof header, 0)) <= 0) {
-        tea_log("recv() failed %ld %s\n", ret, strerror(errno));
-        return ret;
+    ssize_t bytes_recv;
+    if ((bytes_recv = recv(sock, &header, sizeof header, 0)) != sizeof header) {
+        if (bytes_recv) {
+            tea_log("recv() failed : %ld\n", bytes_recv);
+        }
+        return bytes_recv;
     }
 
     if (header.magic != TEA_MAGIC) {
@@ -58,12 +65,11 @@ static ssize_t tea_recv(int sock, void *buf, uint64_t bufsz)
 
     uint64_t offset = 0;
     while (offset < header.payloadsz) {
-        ssize_t bytes_recv;
 
         if ((bytes_recv =
                  recv(sock, buf + offset, header.payloadsz - offset, 0)) < 0) {
-            perror("recv() failed");
-            return -1;
+            tea_log("recv() failed");
+            return offset;
         }
 
         offset += bytes_recv;
@@ -179,16 +185,6 @@ static ssize_t req_handler(TeaState *dev, int conn)
             continue;
         }
 
-        /*
-        if (req.magic != TEA_MAGIC) {
-          tea_log("invalid request received: " TEA_ERR_INVALID_MV
-                  " (magic=%#" PRIx32 ")\n",
-                  req.magic);
-          tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_MV);
-          continue;
-        }
-        */
-
         switch (req.cmd) {
         case TEA_DUMP_STRICT:
             tea_dump_mem_strict(dev, req.basename, req.start);
@@ -210,9 +206,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             continue;
         }
 
-        tea_log("sending success response\n");
         tea_resp(conn, TEA_SUCCESS, TEA_ERR_SUCCESS);
-        tea_log("sent success response\n");
     }
 
     return recvb;
