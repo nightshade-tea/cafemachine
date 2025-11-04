@@ -72,7 +72,7 @@ static ssize_t recv_payload(int sock, void *buf, size_t bufsz)
     return offset;
 }
 
-static void tea_resp(int sock, enum tea_status status, const char *err_msg)
+static void send_response(int sock, enum tea_status status, const char *err_msg)
 {
     struct tea_response resp = {.status = status};
 
@@ -122,13 +122,13 @@ static void send_payload_dump(TeaState *dev,
 
     if ((dumpf = open(filename, O_RDONLY)) < 0) {
         tea_log("open() failed %s\n", strerror(errno));
-        tea_resp(conn, TEA_FAIL, TEA_ERR_NOT_FOUND);
+        send_response(conn, TEA_FAIL, TEA_ERR_NOT_FOUND);
         return;
     }
 
     if (fstat(dumpf, &stat) < 0) {
         tea_log("fstat() failed %s\n", strerror(errno));
-        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
         goto close_file;
     }
 
@@ -141,13 +141,13 @@ static void send_payload_dump(TeaState *dev,
     if ((dump = mmap(NULL, dumpsz, PROT_READ, MAP_SHARED, dumpf, 0)) ==
         MAP_FAILED) {
         tea_log("mmap() failed %s\n", strerror(errno));
-        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
         goto close_file;
     }
 
     if (madvise(dump, dumpsz, MADV_SEQUENTIAL) < 0) {
         tea_log("madvise() failed %s\n", strerror(errno));
-        tea_resp(conn, TEA_FAIL, TEA_ERR_INTERNAL);
+        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
         goto unmap_file;
     }
 
@@ -179,7 +179,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             tea_log("invalid request received: " TEA_ERR_INVALID_SZ
                     " (recvb=%zu)\n",
                     recvb);
-            tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_SZ);
+            send_response(conn, TEA_FAIL, TEA_ERR_INVALID_SZ);
             continue;
         }
 
@@ -200,11 +200,11 @@ static ssize_t req_handler(TeaState *dev, int conn)
             tea_log("invalid request received: " TEA_ERR_INVALID_CMD
                     " (cmd=%#x)\n",
                     req.cmd);
-            tea_resp(conn, TEA_FAIL, TEA_ERR_INVALID_CMD);
+            send_response(conn, TEA_FAIL, TEA_ERR_INVALID_CMD);
             continue;
         }
 
-        tea_resp(conn, TEA_SUCCESS, TEA_ERR_SUCCESS);
+        send_response(conn, TEA_SUCCESS, TEA_ERR_SUCCESS);
     }
 
     return recvb;
