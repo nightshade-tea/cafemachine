@@ -44,6 +44,12 @@ static void list_commands() {
   printf("  help -- " HELP_CMD_DESC "\n");
 }
 
+static void desc_arg_hostname() {
+  printf("\n  hostname\n");
+  printf("    hostname for the " TEA_HW_NAME
+         " device (where the server is running)\n");
+}
+
 void ask_for_help(const char *name) {
   printf("\nrun '%s help' for more information\n", name);
 }
@@ -69,6 +75,9 @@ void usage(const char *name) {
 void usage_dump(const char *name) {
   printf("%s dump [flags] <hostname> -- " DUMP_CMD_DESC "\n", name);
 
+  printf("\narguments:\n");
+  desc_arg_hostname();
+
   printf("\nflags:\n");
 
   desc_flag_strict();
@@ -80,6 +89,9 @@ void usage_dump(const char *name) {
 
 void usage_get(const char *name) {
   printf("%s get [flags] <hostname> -- " GET_CMD_DESC "\n", name);
+
+  printf("\narguments:\n");
+  desc_arg_hostname();
 
   printf("\nflags:\n");
   desc_flag_basename();
