@@ -226,7 +226,7 @@ static int download_dump(int sock, struct tea_request *req) {
     if (recv(sock, &res, sizeof res, 0) < 0) {
       perror("recv() failed");
     } else {
-      fprintf(stderr, "err: %s", res.err_msg);
+      fprintf(stderr, "err: %s\n", res.err_msg);
     }
     goto close_sock;
   }
