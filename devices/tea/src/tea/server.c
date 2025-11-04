@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+/* send header and payload */
 static ssize_t send_payload(int sock, enum tea_msg_type type,
                             const void *payload, size_t payloadsz)
 {
@@ -38,38 +39,34 @@ static ssize_t send_payload(int sock, enum tea_msg_type type,
     return offset;
 }
 
-static size_t tea_recv(int sock, void *buf, uint64_t bufsz)
+static ssize_t recv_payload(int sock, void *buf, size_t bufsz)
 {
-    struct tea_header header = {0};
-
     ssize_t bytes_recv;
+    uint64_t offset;
+    struct tea_header header;
+
     if ((bytes_recv = recv(sock, &header, sizeof header, 0)) != sizeof header) {
-        if (bytes_recv) {
-            tea_log("recv() failed : %ld\n", bytes_recv);
-        }
-        return bytes_recv;
+        tea_log("recv() failed: bytes_recv=%zd errno=%s\n", bytes_recv,
+                strerror(errno));
+        return MIN(bytes_recv, 0);
     }
 
     if (header.magic != TEA_MAGIC) {
-        tea_log("header has invalid magic\n");
+        tea_log("recv_payload() failed: header has invalid magic\n");
         return -1;
     }
 
     if (bufsz < header.payloadsz) {
-        tea_log("not enough space on buffer\n");
+        tea_log("recv_payload() failed: not enough space on buffer\n");
         return -1;
     }
 
-    uint64_t offset = 0;
-    while (offset < header.payloadsz) {
-
+    for (offset = 0; offset < header.payloadsz; offset += bytes_recv) {
         if ((bytes_recv =
                  recv(sock, buf + offset, header.payloadsz - offset, 0)) < 0) {
-            tea_log("recv() failed");
-            return offset;
+            tea_log("recv() failed: %s\n", strerror(errno));
+            return bytes_recv;
         }
-
-        offset += bytes_recv;
     }
 
     return offset;
@@ -177,7 +174,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
 
     errno = 0;
 
-    while ((recvb = tea_recv(conn, &req, sizeof req)) > 0) {
+    while ((recvb = recv_payload(conn, &req, sizeof req)) > 0) {
         if (recvb != sizeof req) {
             tea_log("invalid request received: " TEA_ERR_INVALID_SZ
                     " (recvb=%zu)\n",
@@ -195,7 +192,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             tea_dump_mem_relaxed(dev, req.basename, req.start, req.end);
             break;
 
-        case TEA_RECV_DUMP:
+        case recv_payload_DUMP:
             send_payload_dump(dev, req.basename, conn);
             break;
 
