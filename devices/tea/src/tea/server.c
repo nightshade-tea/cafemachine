@@ -2,7 +2,6 @@
 #include "dump.h"
 #include "tea_device.h"
 #include "tea_log.h"
-#include "utils.h"
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -118,13 +117,13 @@ static int create_listen_sock(void)
 static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
                           int conn)
 {
-    char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
+    char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
     int dumpf;
     struct stat stat;
     off_t dumpsz;
     void *dump;
 
-    mount_filename(basename, filename);
+    assemble_filename(basename, filename);
 
     if ((dumpf = open(filename, O_RDONLY)) < 0) {
         tea_log("open() failed %s\n", strerror(errno));

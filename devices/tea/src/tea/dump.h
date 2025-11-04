@@ -13,4 +13,8 @@ int tea_dump_mem_relaxed(TeaState *dev,
                          const char basename[TEA_MAX_BASENAME_LEN],
                          hwaddr first, hwaddr last);
 
+void assemble_filename(
+    const char basename[TEA_MAX_BASENAME_LEN],
+    char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT]);
+
 #endif /* TEA_DUMP_H */

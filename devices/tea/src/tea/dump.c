@@ -1,7 +1,6 @@
 #include "dump.h"
 #include "tea.h"
 #include "tea_log.h"
-#include "utils.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,11 +41,11 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
                     hwaddr first, hwaddr last, bool relaxed)
 {
     // TEA_DUMP_EXT already has a null terminator
-    char filename[TEA_MAX_BASENAME_LEN + sizeof(TEA_DUMP_EXT)];
+    char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
     FILE *dumpf;
     uint64_t failed_reads = 0;
 
-    mount_filename(basename, filename);
+    assemble_filename(basename, filename);
 
     tea_log("dump requested for %s\n", filename);
 
@@ -99,6 +98,26 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
     fclose(dumpf);
     tea_log("finished memory dump\n");
     return 0;
+}
+
+void assemble_filename(
+    const char basename[TEA_MAX_BASENAME_LEN],
+    char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT])
+{
+    size_t basename_len;
+
+    basename_len = strnlen(basename, TEA_MAX_BASENAME_LEN);
+
+    /* if unset, use default value */
+    if (basename_len == 0) {
+        basename = TEA_DEFAULT_DUMP_BASENAME;
+        basename_len = sizeof(TEA_DEFAULT_DUMP_BASENAME) - 1;
+        tea_log("dump filename not set, defaulting to %s%s\n", basename,
+                TEA_DUMP_EXT);
+    }
+
+    memcpy(filename, basename, basename_len);
+    memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof TEA_DUMP_EXT);
 }
 
 int tea_dump_mem_strict(TeaState *dev,
