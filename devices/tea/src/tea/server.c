@@ -9,32 +9,30 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-static ssize_t tea_send(int sock, enum tea_msg_type type, const void *payload,
-                        size_t payloadsz)
+static ssize_t send_payload(int sock, enum tea_msg_type type,
+                            const void *payload, size_t payloadsz)
 {
+    ssize_t bytes_sent;
+    uint64_t offset;
+
     struct tea_header header = {
         .magic = TEA_MAGIC,
         .type = type,
         .payloadsz = payloadsz,
     };
 
-    ssize_t bytes_sent;
     if ((bytes_sent = send(sock, &header, sizeof header, 0)) != sizeof header) {
-        tea_log("send() failed : %zd bytes sent : err %s\n", bytes_sent,
+        tea_log("send() failed: bytes_sent=%zd errno=%s\n", bytes_sent,
                 strerror(errno));
         return MIN(bytes_sent, 0);
     }
 
-    uint64_t offset = 0;
-    while (offset < payloadsz) {
-
+    for (offset = 0; offset < payloadsz; offset += bytes_sent) {
         if ((bytes_sent = send(sock, payload + offset, payloadsz - offset, 0)) <
             0) {
-            tea_log("send() failed");
-            return offset;
+            tea_log("send() failed: %s\n", strerror(errno));
+            return bytes_sent;
         }
-
-        offset += bytes_sent;
     }
 
     return offset;
@@ -82,7 +80,7 @@ static void tea_resp(int sock, enum tea_status status, const char *err_msg)
     struct tea_response resp = {.status = status};
 
     strncpy(resp.err_msg, err_msg, TEA_MAX_ERR_MSG_LEN);
-    tea_send(sock, TEA_RESPONSE, &resp, sizeof resp);
+    send_payload(sock, TEA_RESPONSE, &resp, sizeof resp);
 }
 
 static int create_listen_sock(void)
@@ -114,8 +112,8 @@ static int create_listen_sock(void)
     return sock;
 }
 
-static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
-                          int conn)
+static void send_payload_dump(TeaState *dev,
+                              char basename[TEA_MAX_BASENAME_LEN], int conn)
 {
     char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
     int dumpf;
@@ -139,7 +137,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
 
     if (!(dumpsz = stat.st_size)) { /* if dumpsz=0, mmap will fail ... */
         tea_log("dump file is empty, sending header only\n");
-        tea_send(conn, TEA_DATA_TRANSFER, NULL, dumpsz);
+        send_payload(conn, TEA_DATA_TRANSFER, NULL, dumpsz);
         goto close_file;
     }
 
@@ -158,7 +156,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
 
     tea_log("sending dump...\n");
 
-    if (tea_send(conn, TEA_DATA_TRANSFER, dump, dumpsz) < 0) {
+    if (send_payload(conn, TEA_DATA_TRANSFER, dump, dumpsz) < 0) {
         tea_log("failed : %s\n", strerror(errno));
     } else {
         tea_log("dump sent!\n");
@@ -198,7 +196,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             break;
 
         case TEA_RECV_DUMP:
-            tea_send_dump(dev, req.basename, conn);
+            send_payload_dump(dev, req.basename, conn);
             break;
 
         default:
