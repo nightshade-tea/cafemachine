@@ -8,6 +8,9 @@ DEV_NAME := tea
 build:
 	$(MAKE) -C $(ROOT)
 
+clean:
+	$(MAKE) -C $(ROOT)
+
 run:
 	$(QEMU_BIN)	                                               	\
 		-M q35                                                    \
@@ -22,7 +25,7 @@ run:
 		-device pcie-root-port,id=rp1,bus=pcie.0,chassis=1,slot=1 \
 		-nographic                                                \
 		-serial mon:stdio                                         \
-		-D $(ROOT)/qemu-debug.log
+		-D $(ROOT)/qemu-debug.log $(OPT)
 
 format:
 	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
