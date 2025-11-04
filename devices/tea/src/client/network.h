@@ -6,8 +6,8 @@
 
 int connect_tea(const char *hostname);
 
-ssize_t tea_send(int sock, enum tea_msg_t type, const void *payload,
-                 uint64_t payloadsz);
+ssize_t tea_send(int sock, enum tea_msg_type type, const void *payload,
+                 size_t payloadsz);
 
 int tea_recv(int sock, void *buf, uint64_t bufsz);
 

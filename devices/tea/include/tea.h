@@ -2,6 +2,7 @@
 #define TEA_H
 
 #include <stdint.h>
+#include <unistd.h>
 
 /* device attributes */
 #define TEA_HW_NAME "tea"
@@ -38,12 +39,17 @@ enum tea_cmd { TEA_DUMP_STRICT, TEA_DUMP_RELAXED, TEA_RECV_DUMP, TEA_CMD_CNT };
 
 enum tea_status { TEA_SUCCESS, TEA_FAIL, TEA_STATUS_CNT };
 
-enum tea_msg_t { TEA_RES, TEA_REQ, TEA_DATA };
+enum tea_msg_type {
+    TEA_RESPONSE,
+    TEA_REQUEST,
+    TEA_DATA_TRANSFER,
+    TEA_MSG_TYPE_CNT
+};
 
 struct __attribute__((packed)) tea_header {
     uint32_t magic;
-    enum tea_msg_t type;
-    uint64_t payloadsz;
+    enum tea_msg_type type;
+    size_t payloadsz;
 };
 
 struct __attribute__((packed)) tea_request {

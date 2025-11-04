@@ -10,8 +10,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-static ssize_t tea_send(int sock, enum tea_msg_t type, const void *payload,
-                        uint64_t payloadsz)
+static ssize_t tea_send(int sock, enum tea_msg_type type, const void *payload,
+                        size_t payloadsz)
 {
     struct tea_header header = {
         .magic = TEA_MAGIC,
@@ -83,7 +83,7 @@ static void tea_resp(int sock, enum tea_status status, const char *err_msg)
     struct tea_response resp = {.status = status};
 
     strncpy(resp.err_msg, err_msg, TEA_MAX_ERR_MSG_LEN);
-    tea_send(sock, TEA_RES, &resp, sizeof resp);
+    tea_send(sock, TEA_RESPONSE, &resp, sizeof resp);
 }
 
 static int create_listen_sock(void)
@@ -140,7 +140,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
 
     if (!(dumpsz = stat.st_size)) { /* if dumpsz=0, mmap will fail ... */
         tea_log("dump file is empty, sending header only\n");
-        tea_send(conn, TEA_DATA, NULL, dumpsz);
+        tea_send(conn, TEA_DATA_TRANSFER, NULL, dumpsz);
         goto close_file;
     }
 
@@ -159,7 +159,7 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
 
     tea_log("sending dump...\n");
 
-    if (tea_send(conn, TEA_DATA, dump, dumpsz) < 0) {
+    if (tea_send(conn, TEA_DATA_TRANSFER, dump, dumpsz) < 0) {
         tea_log("failed : %s\n", strerror(errno));
     } else {
         tea_log("dump sent!\n");

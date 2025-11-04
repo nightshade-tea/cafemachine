@@ -47,8 +47,8 @@ int connect_tea(const char *hostname) {
   return sock;
 }
 
-ssize_t tea_send(int sock, enum tea_msg_t type, const void *payload,
-                 uint64_t payloadsz) {
+ssize_t tea_send(int sock, enum tea_msg_type type, const void *payload,
+                 size_t payloadsz) {
   struct tea_header header = {
       .magic = TEA_MAGIC,
       .type = type,
@@ -116,7 +116,7 @@ enum tea_status send_req(int sock, const struct tea_request *req) {
   printf("sending request... ");
   fflush(stdout);
 
-  if (tea_send(sock, TEA_REQ, req, sizeof(*req)) != sizeof(*req)) {
+  if (tea_send(sock, TEA_REQUEST, req, sizeof(*req)) != sizeof(*req)) {
     perror("tea_send() failed");
     return TEA_FAIL;
   }
@@ -146,7 +146,7 @@ int download_dump(int sock, struct tea_request *req) {
   printf("sending request... ");
   fflush(stdout);
 
-  if (tea_send(sock, TEA_REQ, req, sizeof *req) <= 0) {
+  if (tea_send(sock, TEA_REQUEST, req, sizeof *req) <= 0) {
     fprintf(stderr, "tea_send() failed");
     goto close_sock;
   }
@@ -164,7 +164,7 @@ int download_dump(int sock, struct tea_request *req) {
     goto close_sock;
   }
 
-  if (header.type == TEA_RES) {
+  if (header.type == TEA_RESPONSE) {
     if (recv(sock, &res, sizeof res, 0) < 0) {
       perror("recv() failed");
     } else {
