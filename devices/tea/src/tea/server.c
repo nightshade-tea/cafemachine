@@ -138,7 +138,11 @@ static void tea_send_dump(TeaState *dev, char basename[TEA_MAX_BASENAME_LEN],
         goto close_file;
     }
 
-    dumpsz = stat.st_size;
+    if (!(dumpsz = stat.st_size)) { /* if dumpsz=0, mmap will fail ... */
+        tea_log("dump file is empty, sending header only\n");
+        tea_send(conn, TEA_DATA, NULL, dumpsz);
+        goto close_file;
+    }
 
     if ((dump = mmap(NULL, dumpsz, PROT_READ, MAP_SHARED, dumpf, 0)) ==
         MAP_FAILED) {
