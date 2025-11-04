@@ -192,7 +192,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             tea_dump_mem_relaxed(dev, req.basename, req.start, req.end);
             break;
 
-        case recv_payload_DUMP:
+        case TEA_RECV_DUMP:
             send_payload_dump(dev, req.basename, conn);
             break;
 
