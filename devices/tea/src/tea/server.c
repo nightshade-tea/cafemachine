@@ -80,12 +80,10 @@ static void send_response(int sock, enum tea_status status, const char *err_msg)
     send_payload(sock, TEA_RESPONSE, &resp, sizeof resp);
 }
 
-static int create_listen_sock(void)
+static int setup_listen_socket(void)
 {
     struct sockaddr_in addr;
     int sock;
-
-    errno = 0;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         tea_log("socket() failed: %s\n", strerror(errno));
@@ -239,8 +237,8 @@ void *server_thread_start(void *pci_dev)
     tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
 #endif
 
-    if ((dev->listen_sock = create_listen_sock()) < 0) {
-        tea_log("create_listen_sock() failed\n");
+    if ((dev->listen_sock = setup_listen_socket()) < 0) {
+        tea_log("setup_listen_socket() failed\n");
         return NULL;
     }
 
