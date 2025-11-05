@@ -9,6 +9,33 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+static int setup_listen_socket(void)
+{
+    struct sockaddr_in addr;
+    int sock;
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        tea_log("socket() failed: %s\n", strerror(errno));
+        return -1;
+    }
+
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(TEA_SERVER_PORT);
+
+    if (bind(sock, (struct sockaddr *)&addr, sizeof addr) < 0) {
+        tea_log("bind() failed: %s\n", strerror(errno));
+        return -1;
+    }
+
+    if (listen(sock, TEA_CONN_BACKLOG) < 0) {
+        tea_log("listen() failed: %s\n", strerror(errno));
+        return -1;
+    }
+
+    return sock;
+}
+
 /* send header and payload */
 static ssize_t send_payload(int sock, enum tea_msg_type type,
                             const void *payload, size_t payloadsz)
@@ -78,33 +105,6 @@ static void send_response(int sock, enum tea_status status, const char *err_msg)
 
     strncpy(resp.err_msg, err_msg, TEA_MAX_ERR_MSG_LEN);
     send_payload(sock, TEA_RESPONSE, &resp, sizeof resp);
-}
-
-static int setup_listen_socket(void)
-{
-    struct sockaddr_in addr;
-    int sock;
-
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        tea_log("socket() failed: %s\n", strerror(errno));
-        return -1;
-    }
-
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(TEA_SERVER_PORT);
-
-    if (bind(sock, (struct sockaddr *)&addr, sizeof addr) < 0) {
-        tea_log("bind() failed: %s\n", strerror(errno));
-        return -1;
-    }
-
-    if (listen(sock, TEA_CONN_BACKLOG) < 0) {
-        tea_log("listen() failed: %s\n", strerror(errno));
-        return -1;
-    }
-
-    return sock;
 }
 
 static void send_dump(int sock, char basename[TEA_MAX_BASENAME_LEN])
