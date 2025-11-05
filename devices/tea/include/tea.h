@@ -25,7 +25,7 @@
 /* server options */
 #define TEA_MAGIC 0x1ced07ea
 #define TEA_SERVER_PORT 7734
-#define TEA_MAX_ERR_MSG_LEN 128
+#define TEA_MAX_ERR_MSG_LEN 64
 #define TEA_CONN_BACKLOG 1 /* max sz for the queue of pending connections */
 
 #define TEA_ERR_SUCCESS "ok"
