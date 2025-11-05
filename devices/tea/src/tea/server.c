@@ -25,7 +25,7 @@ static ssize_t send_payload(int sock, enum tea_msg_type type,
     if ((bytes_sent = send(sock, &header, sizeof header, 0)) != sizeof header) {
         tea_log("send() failed: bytes_sent=%zd errno=%s\n", bytes_sent,
                 strerror(errno));
-        return MIN(bytes_sent, 0);
+        return MIN(bytes_sent, -1);
     }
 
     for (offset = 0; offset < payloadsz; offset += bytes_sent) {
@@ -48,7 +48,7 @@ static ssize_t recv_payload(int sock, void *buf, size_t bufsz)
     if ((bytes_recv = recv(sock, &header, sizeof header, 0)) != sizeof header) {
         tea_log("recv() failed: bytes_recv=%zd errno=%s\n", bytes_recv,
                 strerror(errno));
-        return MIN(bytes_recv, 0);
+        return MIN(bytes_recv, -1);
     }
 
     if (header.magic != TEA_MAGIC) {
@@ -107,8 +107,7 @@ static int setup_listen_socket(void)
     return sock;
 }
 
-static void send_payload_dump(TeaState *dev,
-                              char basename[TEA_MAX_BASENAME_LEN], int conn)
+static void send_dump(int sock, char basename[TEA_MAX_BASENAME_LEN])
 {
     char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
     int dumpf;
@@ -119,50 +118,52 @@ static void send_payload_dump(TeaState *dev,
     assemble_filename(basename, filename);
 
     if ((dumpf = open(filename, O_RDONLY)) < 0) {
-        tea_log("open() failed %s\n", strerror(errno));
-        send_response(conn, TEA_FAIL, TEA_ERR_NOT_FOUND);
+        tea_log("open() failed: %s\n", strerror(errno));
+
+        if (errno == ENOENT) {
+            send_response(sock, TEA_FAIL, TEA_ERR_NOT_FOUND);
+        } else {
+            send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
+        }
+
         return;
     }
 
     if (fstat(dumpf, &stat) < 0) {
-        tea_log("fstat() failed %s\n", strerror(errno));
-        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto close_file;
+        tea_log("fstat() failed: %s\n", strerror(errno));
+        send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
+        goto exit_close;
     }
 
     if (!(dumpsz = stat.st_size)) { /* if dumpsz=0, mmap will fail ... */
         tea_log("dump file is empty, sending header only\n");
-        send_payload(conn, TEA_DATA_TRANSFER, NULL, dumpsz);
-        goto close_file;
+        send_payload(sock, TEA_DATA_TRANSFER, NULL, dumpsz);
+        goto exit_close;
     }
 
     if ((dump = mmap(NULL, dumpsz, PROT_READ, MAP_SHARED, dumpf, 0)) ==
         MAP_FAILED) {
-        tea_log("mmap() failed %s\n", strerror(errno));
-        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto close_file;
+        tea_log("mmap() failed: %s\n", strerror(errno));
+        send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
+        goto exit_close;
     }
 
     if (madvise(dump, dumpsz, MADV_SEQUENTIAL) < 0) {
-        tea_log("madvise() failed %s\n", strerror(errno));
-        send_response(conn, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto unmap_file;
+        tea_log("madvise() failed: %s\n", strerror(errno));
+        send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
+        goto exit_unmap;
     }
 
-    tea_log("sending dump...\n");
+    tea_log("sending dump... ");
 
-    if (send_payload(conn, TEA_DATA_TRANSFER, dump, dumpsz) < 0) {
-        tea_log("failed : %s\n", strerror(errno));
-    } else {
-        tea_log("dump sent!\n");
+    if (send_payload(sock, TEA_DATA_TRANSFER, dump, dumpsz) == dumpsz) {
+        tea_log("done\n"); /* send_payload() already prints errors on fail */
     }
 
-unmap_file:
+exit_unmap:
     munmap(dump, dumpsz);
-close_file:
+exit_close:
     close(dumpf);
-
-    return;
 }
 
 static ssize_t req_handler(TeaState *dev, int conn)
@@ -191,7 +192,7 @@ static ssize_t req_handler(TeaState *dev, int conn)
             break;
 
         case TEA_RECV_DUMP:
-            send_payload_dump(dev, req.basename, conn);
+            send_dump(conn, req.basename);
             break;
 
         default:
