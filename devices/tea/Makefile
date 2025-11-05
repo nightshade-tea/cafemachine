@@ -9,7 +9,7 @@ build:
 	$(MAKE) -C $(ROOT)
 
 clean:
-	$(MAKE) -C $(ROOT)
+	$(MAKE) -C $(ROOT) clean
 
 run:
 	$(QEMU_BIN)	                                               	\

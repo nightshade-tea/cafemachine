@@ -21,7 +21,7 @@ typedef struct TeaClass {
 typedef struct TeaState {
     PCIDevice pci_dev; /* inherit */
 
-    int listen_sock; /* listen for inconming connections */
+    int listen_sock; /* listen for incoming connections */
 
     /* dma read/write buffer */
     uint8_t dma_buf[TEA_DMA_BUF_SZ];
