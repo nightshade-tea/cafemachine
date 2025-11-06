@@ -36,67 +36,115 @@ static int setup_listen_socket(void)
     return sock;
 }
 
-/* send header and payload */
+static ssize_t sendbuf(int sockfd, const void *buf, size_t len)
+{
+    size_t offset;
+    ssize_t sentb;
+
+    offset = 0;
+
+    while (offset < len) {
+        if ((sentb = send(sockfd, buf + offset, len - offset, MSG_NOSIGNAL)) <
+            0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            tea_log("send() failed: %s\n", strerror(errno));
+            return -1;
+        }
+
+        offset += sentb;
+    }
+
+    return offset;
+}
+
+static ssize_t recvbuf(int sockfd, void *buf, size_t len)
+{
+    size_t offset;
+    ssize_t recvb;
+
+    offset = 0;
+
+    while (offset < len) {
+        if ((recvb = recv(sockfd, buf + offset, len - offset, 0)) < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            tea_log("recv() failed: %s\n", strerror(errno));
+            return -1;
+        }
+
+        if (recvb == 0) {
+            return 0;
+        }
+
+        offset += recvb;
+    }
+
+    return offset;
+}
+
 static ssize_t send_payload(int sock, enum tea_msg_type type,
                             const void *payload, size_t payloadsz)
 {
-    ssize_t bytes_sent;
-    uint64_t offset;
-
     struct tea_header header = {
         .magic = TEA_MAGIC,
         .type = type,
         .payloadsz = payloadsz,
     };
 
-    if ((bytes_sent = send(sock, &header, sizeof header, 0)) != sizeof header) {
-        tea_log("send() failed: bytes_sent=%zd errno=%s\n", bytes_sent,
-                strerror(errno));
-        return MIN(bytes_sent, -1);
+    if (sendbuf(sock, &header, sizeof header) < 0) {
+        tea_log("failed to send header\n");
+        return -1;
     }
 
-    for (offset = 0; offset < payloadsz; offset += bytes_sent) {
-        if ((bytes_sent = send(sock, payload + offset, payloadsz - offset, 0)) <
-            0) {
-            tea_log("send() failed: %s\n", strerror(errno));
-            return bytes_sent;
-        }
+    if (sendbuf(sock, payload, payloadsz) < 0) {
+        tea_log("failed to send payload\n");
+        return -1;
     }
 
-    return offset;
+    return payloadsz;
 }
 
-static ssize_t recv_payload(int sock, void *buf, size_t bufsz)
+static ssize_t recv_payload(int sock, enum tea_msg_type type, void *payload,
+                            size_t payloadsz)
 {
-    ssize_t bytes_recv;
-    uint64_t offset;
     struct tea_header header;
+    ssize_t err;
 
-    if ((bytes_recv = recv(sock, &header, sizeof header, 0)) != sizeof header) {
-        tea_log("recv() failed: bytes_recv=%zd errno=%s\n", bytes_recv,
-                strerror(errno));
-        return MIN(bytes_recv, -1);
+    if ((err = recvbuf(sock, &header, sizeof header)) < 0) {
+        tea_log("failed to recv header\n");
+        return -1;
+    }
+
+    if (err == 0) {
+        return 0;
     }
 
     if (header.magic != TEA_MAGIC) {
-        tea_log("recv_payload() failed: header has invalid magic\n");
+        tea_log("header has invalid magic\n");
         return -1;
     }
 
-    if (bufsz < header.payloadsz) {
-        tea_log("recv_payload() failed: not enough space on buffer\n");
+    if (header.type != type) {
+        tea_log("unexpected header type\n");
         return -1;
     }
 
-    for (offset = 0; offset < header.payloadsz; offset += bytes_recv) {
-        if ((bytes_recv =
-                 recv(sock, buf + offset, header.payloadsz - offset, 0)) < 0) {
-            tea_log("recv() failed: %s\n", strerror(errno));
-            return bytes_recv;
-        }
+    if (header.payloadsz != payloadsz) {
+        tea_log("unexpected header payloadsz\n");
+        return -1;
     }
 
-    return offset;
+    if ((err = recvbuf(sock, payload, header.payloadsz)) <= 0) {
+        tea_log("failed to recv payload\n");
+        return -1;
+    }
+
+    return payloadsz;
 }
 
 static void send_response(int sock, enum tea_status status, const char *err_msg)
@@ -157,7 +205,7 @@ static void send_dump(int sock, char basename[TEA_MAX_BASENAME_LEN])
     tea_log("sending dump... ");
 
     if (send_payload(sock, TEA_DATA_TRANSFER, dump, dumpsz) == dumpsz) {
-        tea_log("done\n"); /* send_payload() already prints errors on fail */
+        qemu_log("done\n"); /* send_payload() already prints errors on fail */
     }
 
 exit_unmap:
@@ -166,24 +214,13 @@ exit_close:
     close(dumpf);
 }
 
-static ssize_t req_handler(TeaState *dev, int conn)
+static void connection_handler(TeaState *dev, int conn_sock)
 {
     struct tea_request req;
-    ssize_t recvb;
 
-    errno = 0;
-
-    while ((recvb = recv_payload(conn, &req, sizeof req)) > 0) {
-        if (recvb != sizeof req) {
-            tea_log("invalid request received: " TEA_ERR_INVALID_SZ
-                    " (recvb=%zu)\n",
-                    recvb);
-            send_response(conn, TEA_FAIL, TEA_ERR_INVALID_SZ);
-            continue;
-        }
-
+    while (recv_payload(conn_sock, TEA_REQUEST, &req, sizeof req) > 0) {
         switch (req.cmd) {
-        case TEA_DUMP_STRICT:
+        case TEA_DUMP_STRICT: /* TODO: strict should consider req.end */
             tea_dump_mem_strict(dev, req.basename, req.start);
             break;
 
@@ -192,21 +229,17 @@ static ssize_t req_handler(TeaState *dev, int conn)
             break;
 
         case TEA_RECV_DUMP:
-            send_dump(conn, req.basename);
+            send_dump(conn_sock, req.basename);
             break;
 
         default:
-            tea_log("invalid request received: " TEA_ERR_INVALID_CMD
-                    " (cmd=%#x)\n",
-                    req.cmd);
-            send_response(conn, TEA_FAIL, TEA_ERR_INVALID_CMD);
+            tea_log(TEA_ERR_INVALID_CMD ": cmd=%#x\n", req.cmd);
+            send_response(conn_sock, TEA_FAIL, TEA_ERR_INVALID_CMD);
             continue;
         }
 
-        send_response(conn, TEA_SUCCESS, TEA_ERR_SUCCESS);
+        send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
     }
-
-    return recvb;
 }
 
 static void serv(TeaState *dev)
@@ -214,9 +247,7 @@ static void serv(TeaState *dev)
     int conn;
 
     for (;;) {
-        errno = 0;
-
-        tea_log("waiting for connection\n");
+        tea_log("waiting for connection...\n");
 
         if ((conn = accept(dev->listen_sock, NULL, NULL)) < 0) {
             tea_log("accept() failed: %s\n", strerror(errno));
@@ -224,9 +255,10 @@ static void serv(TeaState *dev)
         }
 
         tea_log("connection accepted\n");
-        req_handler(dev, conn);
+        connection_handler(dev, conn);
 
         close(conn);
+        tea_log("connection closed\n");
     }
 }
 
