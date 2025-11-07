@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+/* TODO: review everything here, network.h interface/behaviour changed */
+
 static int dump(int argc, char *argv[]) {
   struct tea_request req = {0};
   const char *hostname;
