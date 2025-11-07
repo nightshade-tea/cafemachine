@@ -53,10 +53,10 @@ static int dump(int argc, char *argv[]) {
 
   hostname = argv[(optind + 1)];
 
-  if ((sock = connect_tea(hostname)) < 0)
+  if ((sock = connect_to_server(hostname)) < 0)
     return sock;
 
-  err = send_req(sock, &req);
+  err = send_request(sock, &req);
   close(sock);
 
   return err;
@@ -97,10 +97,10 @@ static int get(int argc, char *argv[]) {
 
   hostname = argv[(optind + 1)];
 
-  if ((sock = connect_tea(hostname)) < 0)
+  if ((sock = connect_to_server(hostname)) < 0)
     return sock;
 
-  return download_dump(sock, &req);
+  return recv_dump(sock, &req);
 }
 
 static int help(int argc, char *argv[]) {

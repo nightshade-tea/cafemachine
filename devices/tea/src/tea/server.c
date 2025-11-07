@@ -139,7 +139,7 @@ static ssize_t recv_payload(int sock, enum tea_msg_type type, void *payload,
         return -1;
     }
 
-    if ((err = recvbuf(sock, payload, header.payloadsz)) <= 0) {
+    if (recvbuf(sock, payload, header.payloadsz) <= 0) {
         tea_log("failed to recv payload\n");
         return -1;
     }
