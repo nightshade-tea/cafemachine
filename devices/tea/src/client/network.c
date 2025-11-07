@@ -224,7 +224,7 @@ ssize_t recv_dump(int sock, const struct tea_request *req) {
   struct tea_response response;
   int dumpfd;
 
-  size_t bufsz;
+  socklen_t bufsz;
   socklen_t optlen;
   void *buf;
 
@@ -281,7 +281,7 @@ ssize_t recv_dump(int sock, const struct tea_request *req) {
   }
 
   if (optlen != sizeof bufsz) {
-    fprintf(stderr, "SO_RCVBUF is not size_t?\n");
+    fprintf(stderr, "type mismatch getting SO_RCVBUF\n");
     goto err_close;
   }
 
