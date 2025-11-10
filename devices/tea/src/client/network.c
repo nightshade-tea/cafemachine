@@ -13,13 +13,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* TODO: unlink dump file on fail */
-/* TODO: TEA_DUMP_TOLERANCE flag */
 /* TODO: TEA_DUMP_PAGES_ON_ERR flag */
-/* TODO: fix TEA_DUMP_TOLERANCE can't be zero bug */
 /* TODO: rewrite strict dump mode considering an end address
  *       (if 0 then (1 << 48) - 1) else end */
-/* TODO: after all these, test extensively */
 
 static ssize_t writebuf(int fd, const void *buf, size_t count) {
   size_t offset;

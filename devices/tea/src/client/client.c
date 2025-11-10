@@ -58,9 +58,21 @@ static int dump(int argc, char *argv[]) {
     return -err;
   }
 
+  /* validate parameters */
   if ((set_flags & FLAG_STRICT) && (set_flags & FLAG_RELAXED)) {
     fprintf(stderr, "conflicting options '--" FLAG_LONG_STRICT
                     "' and '--" FLAG_LONG_RELAXED "' \n");
+    ask_for_cmd_help(argv[0], "dump");
+    return EINVAL;
+  }
+
+  if ((set_flags & FLAG_RELAXED) && (set_flags & FLAG_TOLERANCE)) {
+    fprintf(stderr, "conflicting options '--" FLAG_LONG_RELAXED
+                    "' and '--" FLAG_LONG_TOLERANCE "' \n");
+
+    fprintf(stderr,
+            "'--" FLAG_LONG_TOLERANCE "' is only valid on strict mode\n");
+
     ask_for_cmd_help(argv[0], "dump");
     return EINVAL;
   }

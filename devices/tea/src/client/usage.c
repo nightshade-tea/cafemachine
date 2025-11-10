@@ -12,8 +12,8 @@
 
 static void desc_flag_strict() {
   printf("\n  -%c, --" FLAG_LONG_STRICT "\n", FLAG_SHORT_STRICT);
-  printf("    stop after " STR(
-      TEA_DUMP_TOLERANCE) " consecutive failed reads (TEA_DUMP_TOLERANCE)\n");
+  printf("    stop after '--" FLAG_LONG_TOLERANCE
+         "' consecutive failed reads\n");
 }
 
 static void desc_flag_relaxed() {
@@ -29,6 +29,13 @@ static void desc_flag_start() {
 static void desc_flag_end() {
   printf("\n  -%c, --" FLAG_LONG_END "\n", FLAG_SHORT_END);
   printf("    stop dump after reaching this physical address\n");
+}
+
+static void desc_flag_tolerance() {
+  printf("\n  -%c, --" FLAG_LONG_TOLERANCE "\n", FLAG_SHORT_TOLERANCE);
+  printf("    number of allowed consecutive failed reads. if this flag is not\n"
+         "    set or set to zero, TEA_DEFAULT_DUMP_TOLERANCE=" STR(
+             TEA_DEFAULT_DUMP_TOLERANCE) " is used.\n");
 }
 
 static void desc_flag_basename() {
@@ -84,6 +91,7 @@ void usage_dump(const char *name) {
   desc_flag_relaxed();
   desc_flag_start();
   desc_flag_end();
+  desc_flag_tolerance();
   desc_flag_basename();
 }
 

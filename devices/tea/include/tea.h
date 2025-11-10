@@ -18,7 +18,8 @@
 #define TEA_DUMP_EXT ".dat" /* file extension for dump files */
 
 /* dump options */
-#define TEA_DUMP_TOLERANCE 1    /* number of allowed consecutive failed reads */
+#define TEA_DEFAULT_DUMP_TOLERANCE                                             \
+    1                           /* number of allowed consecutive failed reads */
 #define TEA_HOTPLUG_DUMP 0      /* dump on hotplug feature */
 #define TEA_DUMP_PAGES_ON_ERR 0 /* retry dump page by page on error */
 
@@ -56,6 +57,7 @@ struct __attribute__((packed)) tea_request {
     enum tea_cmd cmd;
     uint64_t start;
     uint64_t end;
+    uint32_t tolerance;
     char basename[TEA_MAX_BASENAME_LEN];
 };
 

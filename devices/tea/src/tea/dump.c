@@ -38,12 +38,16 @@ static int dump_pages(TeaState *dev, hwaddr first, hwaddr last)
 #endif
 
 static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
-                    hwaddr first, hwaddr last, bool relaxed)
+                    hwaddr first, hwaddr last, bool relaxed, uint32_t tolerance)
 {
     // TEA_DUMP_EXT already has a null terminator
     char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
     FILE *dumpf;
-    uint64_t failed_reads = 0;
+    uint32_t failed_reads = 0;
+
+    if (!tolerance) {
+        tolerance = TEA_DEFAULT_DUMP_TOLERANCE;
+    }
 
     assemble_filename(basename, filename);
 
@@ -56,14 +60,14 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
         return -1;
     }
 
-    while (first <= last && (relaxed || failed_reads < TEA_DUMP_TOLERANCE)) {
+    while (first <= last && (relaxed || failed_reads < tolerance)) {
         MemTxResult err;
         size_t readsz = MIN(TEA_DMA_BUF_SZ, last - first + 1);
 
         /* read memory */
         if ((err = pci_dma_read(&dev->pci_dev, first, dev->dma_buf, readsz)) !=
             MEMTX_OK) {
-            tea_log("(%" PRIu64 ") failed dma read of %zu bytes from %#" PRIx64
+            tea_log("(%" PRIu32 ") failed dma read of %zu bytes from %#" PRIx64
                     " (MemTxResult=%u)\n",
                     ++failed_reads, readsz, first, err);
 
@@ -121,14 +125,15 @@ void assemble_filename(
 }
 
 int tea_dump_mem_strict(TeaState *dev,
-                        const char basename[TEA_MAX_BASENAME_LEN], hwaddr first)
+                        const char basename[TEA_MAX_BASENAME_LEN], hwaddr first,
+                        uint32_t tolerance)
 {
-    return dump_mem(dev, basename, first, (1LLU << 48) - 1, false);
+    return dump_mem(dev, basename, first, (1LLU << 48) - 1, false, tolerance);
 }
 
 int tea_dump_mem_relaxed(TeaState *dev,
                          const char basename[TEA_MAX_BASENAME_LEN],
                          hwaddr first, hwaddr last)
 {
-    return dump_mem(dev, basename, first, last, true);
+    return dump_mem(dev, basename, first, last, true, 0);
 }

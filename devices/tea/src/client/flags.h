@@ -9,6 +9,7 @@ enum {
   __FLAG_SHIFT_RELAXED,
   __FLAG_SHIFT_START,
   __FLAG_SHIFT_END,
+  __FLAG_SHIFT_TOLERANCE,
   __FLAG_SHIFT_BASENAME,
 }; /* max 32, since set_flags is an int */
 
@@ -35,6 +36,12 @@ enum {
 #define FLAG_LONG_END "end"
 #define FLAG_SHORT_END 'E'
 #define FLAG_OPTSTR_END "E:"
+
+#define FLAG_TOLERANCE (1 << __FLAG_SHIFT_TOLERANCE)
+#define FLAG_HAS_ARG_TOLERANCE required_argument
+#define FLAG_LONG_TOLERANCE "tolerance"
+#define FLAG_SHORT_TOLERANCE 'T'
+#define FLAG_OPTSTR_TOLERANCE "T:"
 
 #define FLAG_BASENAME (1 << __FLAG_SHIFT_BASENAME)
 #define FLAG_HAS_ARG_BASENAME required_argument

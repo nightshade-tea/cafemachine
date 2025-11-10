@@ -8,15 +8,13 @@
 
 #define __OPTSTR                                                               \
   FLAG_OPTSTR_STRICT FLAG_OPTSTR_RELAXED FLAG_OPTSTR_START FLAG_OPTSTR_END     \
-      FLAG_OPTSTR_BASENAME
+      FLAG_OPTSTR_TOLERANCE FLAG_OPTSTR_BASENAME
 
 #define __DEF_FLAG(x) {FLAG_LONG_##x, FLAG_HAS_ARG_##x, 0, FLAG_SHORT_##x},
 
 static struct option long_options[] = {
     __DEF_FLAG(STRICT) __DEF_FLAG(RELAXED) __DEF_FLAG(START) __DEF_FLAG(END)
-        __DEF_FLAG(BASENAME){0, 0, 0, 0}};
-
-#undef __DEF_FLAG
+        __DEF_FLAG(TOLERANCE) __DEF_FLAG(BASENAME){0, 0, 0, 0}};
 
 int parse_flags(int argc, char *argv[], struct tea_request *req,
                 int *set_flags) {
@@ -42,21 +40,39 @@ int parse_flags(int argc, char *argv[], struct tea_request *req,
       break;
 
     case FLAG_SHORT_START:
+      errno = 0;
+
+      *set_flags |= FLAG_START;
+      req->start = strtoull(optarg, NULL, 0);
+
+      if (errno) {
+        perror("failed to parse start address\n");
+        return -EINVAL;
+      }
+
+      break;
+
     case FLAG_SHORT_END:
       errno = 0;
 
-      if (opt == FLAG_SHORT_START) {
-        *set_flags |= FLAG_START;
-        req->start = strtoull(optarg, NULL, 0);
-      }
-
-      else {
-        *set_flags |= FLAG_END;
-        req->end = strtoull(optarg, NULL, 0);
-      }
+      *set_flags |= FLAG_END;
+      req->end = strtoull(optarg, NULL, 0);
 
       if (errno) {
-        perror("failed to parse address\n");
+        perror("failed to parse end address\n");
+        return -EINVAL;
+      }
+
+      break;
+
+    case FLAG_SHORT_TOLERANCE:
+      errno = 0;
+
+      *set_flags |= FLAG_TOLERANCE;
+      req->tolerance = strtoul(optarg, NULL, 0);
+
+      if (errno) {
+        perror("failed to parse tolerance value\n");
         return -EINVAL;
       }
 
