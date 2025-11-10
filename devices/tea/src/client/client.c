@@ -12,6 +12,7 @@
 
 static int dump(int argc, char *argv[]) {
   struct tea_request req = {0};
+  struct tea_response resp;
   const char *hostname;
   int sock;
   int set_flags;
@@ -56,11 +57,27 @@ static int dump(int argc, char *argv[]) {
   hostname = argv[(optind + 1)];
 
   if ((sock = connect_to_server(hostname)) < 0)
-    return sock;
+    return ENOTCONN;
 
-  err = send_request(sock, &req);
+  if (send_request(sock, &req)) {
+    fprintf(stderr, "failed to send request\n");
+    err = EPROTO;
+    goto exit_close;
+  }
+
+  if (recv_response(sock, &resp)) {
+    fprintf(stderr, "failed to get server response\n");
+    err = EPROTO;
+    goto exit_close;
+  }
+
+  printf("server response: %s\n", resp.err_msg);
+
   close(sock);
+  return 0;
 
+exit_close:
+  close(sock);
   return err;
 }
 
