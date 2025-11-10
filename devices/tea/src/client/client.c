@@ -106,13 +106,13 @@ static int dump(int argc, char *argv[]) {
   if (send_request(sock, &req) < 0) {
     fprintf(stderr, "failed to send request\n");
     err = EPROTO;
-    goto exit_close;
+    goto err_close_sock;
   }
 
   if (recv_response(sock, &resp) < 0) {
     fprintf(stderr, "failed to get server response\n");
     err = EPROTO;
-    goto exit_close;
+    goto err_close_sock;
   }
 
   printf("server response: %s\n", resp.err_msg);
@@ -120,7 +120,7 @@ static int dump(int argc, char *argv[]) {
   close(sock);
   return 0;
 
-exit_close:
+err_close_sock:
   close(sock);
   return err;
 }

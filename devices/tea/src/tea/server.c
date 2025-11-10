@@ -180,26 +180,26 @@ static void send_dump(int sock, char basename[TEA_MAX_BASENAME_LEN])
     if (fstat(dumpf, &stat) < 0) {
         tea_log("fstat() failed: %s\n", strerror(errno));
         send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto exit_close;
+        goto err_close_dumpf;
     }
 
     if (!(dumpsz = stat.st_size)) { /* if dumpsz=0, mmap will fail ... */
         tea_log("dump file is empty, sending header only\n");
         send_payload(sock, TEA_DATA_TRANSFER, NULL, dumpsz);
-        goto exit_close;
+        goto err_close_dumpf;
     }
 
     if ((dump = mmap(NULL, dumpsz, PROT_READ, MAP_SHARED, dumpf, 0)) ==
         MAP_FAILED) {
         tea_log("mmap() failed: %s\n", strerror(errno));
         send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto exit_close;
+        goto err_close_dumpf;
     }
 
     if (madvise(dump, dumpsz, MADV_SEQUENTIAL) < 0) {
         tea_log("madvise() failed: %s\n", strerror(errno));
         send_response(sock, TEA_FAIL, TEA_ERR_INTERNAL);
-        goto exit_unmap;
+        goto err_unmap;
     }
 
     tea_log("sending dump... ");
@@ -208,9 +208,9 @@ static void send_dump(int sock, char basename[TEA_MAX_BASENAME_LEN])
         qemu_log("done\n"); /* send_payload() already prints errors on fail */
     }
 
-exit_unmap:
+err_unmap:
     munmap(dump, dumpsz);
-exit_close:
+err_close_dumpf:
     close(dumpf);
 }
 
