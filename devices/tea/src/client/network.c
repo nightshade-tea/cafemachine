@@ -278,7 +278,8 @@ ssize_t recv_dump(int sock, const struct tea_request *req) {
   /* create local dump file */
   assemble_filename(req->basename, filename);
 
-  if ((dumpfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 644)) < 0) {
+  if ((dumpfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, DUMP_FILE_PERMS)) <
+      0) {
     perror("open() failed");
     return -1;
   }

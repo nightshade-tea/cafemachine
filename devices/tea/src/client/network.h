@@ -4,6 +4,8 @@
 #include "tea.h"
 #include <sys/types.h>
 
+#define DUMP_FILE_PERMS 0644
+
 int connect_to_server(const char *hostname);
 
 ssize_t send_request(int sock, const struct tea_request *req);

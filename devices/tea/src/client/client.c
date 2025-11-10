@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/* TODO: review everything here, network.h interface/behaviour changed */
-
 static int dump(int argc, char *argv[]) {
   struct tea_request req = {0};
   struct tea_response resp;
@@ -59,13 +57,13 @@ static int dump(int argc, char *argv[]) {
   if ((sock = connect_to_server(hostname)) < 0)
     return ENOTCONN;
 
-  if (send_request(sock, &req)) {
+  if (send_request(sock, &req) < 0) {
     fprintf(stderr, "failed to send request\n");
     err = EPROTO;
     goto exit_close;
   }
 
-  if (recv_response(sock, &resp)) {
+  if (recv_response(sock, &resp) < 0) {
     fprintf(stderr, "failed to get server response\n");
     err = EPROTO;
     goto exit_close;
@@ -117,7 +115,7 @@ static int get(int argc, char *argv[]) {
   hostname = argv[(optind + 1)];
 
   if ((sock = connect_to_server(hostname)) < 0)
-    return sock;
+    return ENOTCONN;
 
   return recv_dump(sock, &req);
 }
