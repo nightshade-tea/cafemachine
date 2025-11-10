@@ -128,10 +128,13 @@ void assemble_filename(
 
 int tea_dump_mem_strict(TeaState *dev,
                         const char basename[TEA_MAX_BASENAME_LEN], hwaddr first,
-                        uint8_t dump_pages, uint32_t tolerance)
+                        hwaddr last, uint8_t dump_pages, uint32_t tolerance)
 {
-    return dump_mem(dev, basename, first, (1LLU << 48) - 1, false, dump_pages,
-                    tolerance);
+    if (!last) {
+        last = (1LLU << 48) - 1;
+    }
+
+    return dump_mem(dev, basename, first, last, false, dump_pages, tolerance);
 }
 
 int tea_dump_mem_relaxed(TeaState *dev,

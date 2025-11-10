@@ -3,6 +3,10 @@
 #include "tea.h"
 #include <stdio.h>
 
+/* TODO: add more detailed explanations for each flag */
+/* TODO: say which flags are mandatory, which are optional */
+/* TODO: say which flags are specific to strict/relaxed mode */
+
 #define DUMP_CMD_DESC "trigger a memory dump"
 #define GET_CMD_DESC "download a memory dump from the " TEA_HW_NAME " device"
 #define HELP_CMD_DESC "display help information"

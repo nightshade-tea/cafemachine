@@ -220,9 +220,9 @@ static void connection_handler(TeaState *dev, int conn_sock)
 
     while (recv_payload(conn_sock, TEA_REQUEST, &req, sizeof req) > 0) {
         switch (req.cmd) {
-        case TEA_DUMP_STRICT: /* TODO: strict should consider req.end */
-            tea_dump_mem_strict(dev, req.basename, req.start, req.dump_pages,
-                                req.tolerance);
+        case TEA_DUMP_STRICT:
+            tea_dump_mem_strict(dev, req.basename, req.start, req.end,
+                                req.dump_pages, req.tolerance);
             send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             break;
 

@@ -13,9 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* TODO: rewrite strict dump mode considering an end address
- *       (if 0 then (1 << 48) - 1) else end */
-
 static ssize_t writebuf(int fd, const void *buf, size_t count) {
   size_t offset;
   ssize_t writb;
