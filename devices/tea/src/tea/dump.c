@@ -5,15 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#if TEA_DUMP_PAGES_ON_ERR
 static int dump_pages(TeaState *dev, hwaddr first, hwaddr last)
 {
     size_t buf_offset = 0;
     int all_failed = 1;
-
-    tea_log("TEA_DUMP_PAGES_ON_ERR is set, retrying dump page by page on range "
-            "%#" PRIx64 " -- %#" PRIx64 "\n",
-            first, last);
 
     while (first <= last) {
         MemTxResult err;
@@ -35,10 +30,10 @@ static int dump_pages(TeaState *dev, hwaddr first, hwaddr last)
 
     return all_failed;
 }
-#endif
 
 static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
-                    hwaddr first, hwaddr last, bool relaxed, uint32_t tolerance)
+                    hwaddr first, hwaddr last, bool relaxed,
+                    uint8_t enable_dump_pages, uint32_t tolerance)
 {
     // TEA_DUMP_EXT already has a null terminator
     char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
@@ -71,13 +66,20 @@ static int dump_mem(TeaState *dev, const char basename[TEA_MAX_BASENAME_LEN],
                     " (MemTxResult=%u)\n",
                     ++failed_reads, readsz, first, err);
 
-#if TEA_DUMP_PAGES_ON_ERR
-            if (!dump_pages(dev, first, first + readsz)) {
-                failed_reads = 0;
+            if (enable_dump_pages) {
+                tea_log("enable_dump_pages is set, retrying dump page by page "
+                        "on range "
+                        "%#" PRIx64 " -- %#" PRIx64 "\n",
+                        first, first + readsz);
+
+                if (!dump_pages(dev, first, first + readsz)) {
+                    failed_reads = 0;
+                }
             }
-#else
-            memset(dev->dma_buf, 0, TEA_DMA_BUF_SZ);
-#endif
+
+            else {
+                memset(dev->dma_buf, 0, TEA_DMA_BUF_SZ);
+            }
         }
 
         else {
@@ -126,14 +128,15 @@ void assemble_filename(
 
 int tea_dump_mem_strict(TeaState *dev,
                         const char basename[TEA_MAX_BASENAME_LEN], hwaddr first,
-                        uint32_t tolerance)
+                        uint8_t dump_pages, uint32_t tolerance)
 {
-    return dump_mem(dev, basename, first, (1LLU << 48) - 1, false, tolerance);
+    return dump_mem(dev, basename, first, (1LLU << 48) - 1, false, dump_pages,
+                    tolerance);
 }
 
 int tea_dump_mem_relaxed(TeaState *dev,
                          const char basename[TEA_MAX_BASENAME_LEN],
-                         hwaddr first, hwaddr last)
+                         hwaddr first, hwaddr last, uint8_t dump_pages)
 {
-    return dump_mem(dev, basename, first, last, true, 0);
+    return dump_mem(dev, basename, first, last, true, dump_pages, 0);
 }

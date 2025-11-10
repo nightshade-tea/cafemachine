@@ -31,6 +31,11 @@ static void desc_flag_end() {
   printf("    stop dump after reaching this physical address\n");
 }
 
+static void desc_flag_dump_pages() {
+  printf("\n  -%c, --" FLAG_LONG_DUMP_PAGES "\n", FLAG_SHORT_DUMP_PAGES);
+  printf("    retry dump page by page on error\n");
+}
+
 static void desc_flag_tolerance() {
   printf("\n  -%c, --" FLAG_LONG_TOLERANCE "\n", FLAG_SHORT_TOLERANCE);
   printf("    number of allowed consecutive failed reads. if this flag is not\n"
@@ -91,6 +96,7 @@ void usage_dump(const char *name) {
   desc_flag_relaxed();
   desc_flag_start();
   desc_flag_end();
+  desc_flag_dump_pages();
   desc_flag_tolerance();
   desc_flag_basename();
 }

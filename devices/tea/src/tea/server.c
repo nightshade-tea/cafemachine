@@ -221,12 +221,14 @@ static void connection_handler(TeaState *dev, int conn_sock)
     while (recv_payload(conn_sock, TEA_REQUEST, &req, sizeof req) > 0) {
         switch (req.cmd) {
         case TEA_DUMP_STRICT: /* TODO: strict should consider req.end */
-            tea_dump_mem_strict(dev, req.basename, req.start, req.tolerance);
+            tea_dump_mem_strict(dev, req.basename, req.start, req.dump_pages,
+                                req.tolerance);
             send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             break;
 
         case TEA_DUMP_RELAXED:
-            tea_dump_mem_relaxed(dev, req.basename, req.start, req.end);
+            tea_dump_mem_relaxed(dev, req.basename, req.start, req.end,
+                                 req.dump_pages);
             send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             break;
 
@@ -268,7 +270,9 @@ void *server_thread_start(void *pci_dev)
     TeaState *dev = TEA_DEVICE(pci_dev);
 
 #if TEA_HOTPLUG_DUMP
-    tea_dump_mem_strict(dev, TEA_DEFAULT_DUMP_BASENAME, 0);
+    tea_dump_mem_strict(
+        dev, TEA_DEFAULT_DUMP_BASENAME, TEA_HOTPLUG_DUMP_START_ADDR,
+        TEA_HOTPLUG_DUMP_PAGES_ON_ERR, TEA_DEFAULT_DUMP_TOLERANCE);
 #endif
 
     if ((dev->listen_sock = setup_listen_socket()) < 0) {

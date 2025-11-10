@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* TODO: TEA_DUMP_PAGES_ON_ERR flag */
 /* TODO: rewrite strict dump mode considering an end address
  *       (if 0 then (1 << 48) - 1) else end */
 

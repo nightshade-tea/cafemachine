@@ -8,13 +8,14 @@
 
 #define __OPTSTR                                                               \
   FLAG_OPTSTR_STRICT FLAG_OPTSTR_RELAXED FLAG_OPTSTR_START FLAG_OPTSTR_END     \
-      FLAG_OPTSTR_TOLERANCE FLAG_OPTSTR_BASENAME
+      FLAG_OPTSTR_DUMP_PAGES FLAG_OPTSTR_TOLERANCE FLAG_OPTSTR_BASENAME
 
 #define __DEF_FLAG(x) {FLAG_LONG_##x, FLAG_HAS_ARG_##x, 0, FLAG_SHORT_##x},
 
 static struct option long_options[] = {
     __DEF_FLAG(STRICT) __DEF_FLAG(RELAXED) __DEF_FLAG(START) __DEF_FLAG(END)
-        __DEF_FLAG(TOLERANCE) __DEF_FLAG(BASENAME){0, 0, 0, 0}};
+        __DEF_FLAG(DUMP_PAGES) __DEF_FLAG(TOLERANCE)
+            __DEF_FLAG(BASENAME){0, 0, 0, 0}};
 
 int parse_flags(int argc, char *argv[], struct tea_request *req,
                 int *set_flags) {
@@ -62,6 +63,12 @@ int parse_flags(int argc, char *argv[], struct tea_request *req,
         perror("failed to parse end address\n");
         return -EINVAL;
       }
+
+      break;
+
+    case FLAG_SHORT_DUMP_PAGES:
+      *set_flags |= FLAG_DUMP_PAGES;
+      req->dump_pages = 1;
 
       break;
 

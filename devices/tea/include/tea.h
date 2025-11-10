@@ -19,9 +19,12 @@
 
 /* dump options */
 #define TEA_DEFAULT_DUMP_TOLERANCE                                             \
-    1                           /* number of allowed consecutive failed reads */
-#define TEA_HOTPLUG_DUMP 0      /* dump on hotplug feature */
-#define TEA_DUMP_PAGES_ON_ERR 0 /* retry dump page by page on error */
+    1 /* number of allowed consecutive failed reads */
+
+/* hotplug settings */
+#define TEA_HOTPLUG_DUMP 0 /* toggle dump on hotplug feature */
+#define TEA_HOTPLUG_DUMP_START_ADDR 0
+#define TEA_HOTPLUG_DUMP_PAGES_ON_ERR 0 /* retry dump page by page on error */
 
 /* server options */
 #define TEA_MAGIC 0x1ced07ea
@@ -58,6 +61,7 @@ struct __attribute__((packed)) tea_request {
     uint64_t start;
     uint64_t end;
     uint32_t tolerance;
+    uint8_t dump_pages; /* toggle dump pages on error feature */
     char basename[TEA_MAX_BASENAME_LEN];
 };
 
