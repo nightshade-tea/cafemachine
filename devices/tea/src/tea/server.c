@@ -222,13 +222,16 @@ static void connection_handler(TeaState *dev, int conn_sock)
         switch (req.cmd) {
         case TEA_DUMP_STRICT: /* TODO: strict should consider req.end */
             tea_dump_mem_strict(dev, req.basename, req.start);
+            send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             break;
 
         case TEA_DUMP_RELAXED:
             tea_dump_mem_relaxed(dev, req.basename, req.start, req.end);
+            send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             break;
 
         case TEA_RECV_DUMP:
+            send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
             send_dump(conn_sock, req.basename);
             break;
 
@@ -237,8 +240,6 @@ static void connection_handler(TeaState *dev, int conn_sock)
             send_response(conn_sock, TEA_FAIL, TEA_ERR_INVALID_CMD);
             continue;
         }
-
-        send_response(conn_sock, TEA_SUCCESS, TEA_ERR_SUCCESS);
     }
 }
 

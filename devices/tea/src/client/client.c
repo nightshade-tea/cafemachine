@@ -3,10 +3,44 @@
 #include "tea.h"
 #include "usage.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+static void
+assemble_filename(const char basename[TEA_MAX_BASENAME_LEN],
+                  char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT]) {
+  size_t basename_len;
+
+  basename_len = strnlen(basename, TEA_MAX_BASENAME_LEN);
+
+  /* if unset, use default value */
+  if (basename_len == 0) {
+    basename = TEA_DEFAULT_DUMP_BASENAME;
+    basename_len = sizeof(TEA_DEFAULT_DUMP_BASENAME) - 1;
+  }
+
+  memcpy(filename, basename, basename_len);
+  memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof TEA_DUMP_EXT);
+}
+
+static int create_dump_file(const struct tea_request *req) {
+  char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
+  int dumpfd;
+
+  assemble_filename(req->basename, filename);
+
+  printf("dump file: %s\n", filename);
+
+  if ((dumpfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
+    perror("open() failed");
+    return -1;
+  }
+
+  return dumpfd;
+}
 
 static int dump(int argc, char *argv[]) {
   struct tea_request req = {0};
@@ -80,10 +114,12 @@ exit_close:
 }
 
 static int get(int argc, char *argv[]) {
-  const char *hostname;
   struct tea_request req = {0};
-  int set_flags;
+  struct tea_response resp;
+  const char *hostname;
   int sock;
+  int dumpfd;
+  int set_flags;
   int err;
 
   /* default values */
@@ -117,7 +153,50 @@ static int get(int argc, char *argv[]) {
   if ((sock = connect_to_server(hostname)) < 0)
     return ENOTCONN;
 
-  return recv_dump(sock, &req);
+  if (send_request(sock, &req) < 0) {
+    fprintf(stderr, "failed to send request\n");
+    err = EPROTO;
+    goto err_close_sock;
+  }
+
+  if (recv_response(sock, &resp) < 0) {
+    fprintf(stderr, "failed to get server response\n");
+    err = EPROTO;
+    goto err_close_sock;
+  }
+
+  printf("server response: %s\n", resp.err_msg);
+
+  if (resp.status != TEA_SUCCESS) {
+    fprintf(stderr, "server returned an error, aborting\n");
+    err = EPROTO;
+    goto err_close_sock;
+  }
+
+  if ((dumpfd = create_dump_file(&req)) < 0) {
+    err = errno;
+    fprintf(stderr, "failed to create dump file\n");
+    goto err_close_sock;
+  }
+
+  if (recv_dump(sock, dumpfd) < 0) {
+    fprintf(stderr, "data transfer failed\n");
+    err = EPROTO;
+    goto err_close_dumpfd;
+  }
+
+  close(dumpfd);
+  close(sock);
+
+  return 0;
+
+err_close_dumpfd:
+  close(dumpfd);
+
+err_close_sock:
+  close(sock);
+
+  return err;
 }
 
 static int help(int argc, char *argv[]) {

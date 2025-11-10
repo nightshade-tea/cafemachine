@@ -13,10 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* TODO: modularize recv_dump() */
-/* TODO: change response/data order for recv_dump() op */
 /* TODO: unlink dump file on fail */
-/* TODO: remove TEA_ANY when possible */
 /* TODO: TEA_DUMP_TOLERANCE flag */
 /* TODO: TEA_DUMP_PAGES_ON_ERR flag */
 /* TODO: fix TEA_DUMP_TOLERANCE can't be zero bug */
@@ -123,7 +120,7 @@ static ssize_t recv_header(int sock, enum tea_msg_type type,
     return -1;
   }
 
-  if (type != TEA_ANY && header->type != type) {
+  if (header->type != type) {
     fprintf(stderr, "unexpected header type\n");
     return -1;
   }
@@ -149,23 +146,6 @@ static ssize_t recv_payload(int sock, enum tea_msg_type type, void *payload,
   }
 
   return payloadsz;
-}
-
-static void
-assemble_filename(const char basename[TEA_MAX_BASENAME_LEN],
-                  char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT]) {
-  size_t basename_len;
-
-  basename_len = strnlen(basename, TEA_MAX_BASENAME_LEN);
-
-  /* if unset, use default value */
-  if (basename_len == 0) {
-    basename = TEA_DEFAULT_DUMP_BASENAME;
-    basename_len = sizeof(TEA_DEFAULT_DUMP_BASENAME) - 1;
-  }
-
-  memcpy(filename, basename, basename_len);
-  memcpy(filename + basename_len, TEA_DUMP_EXT, sizeof TEA_DUMP_EXT);
 }
 
 int connect_to_server(const char *hostname) {
@@ -229,118 +209,85 @@ ssize_t recv_response(int sock, struct tea_response *resp) {
   return sizeof *resp;
 }
 
-ssize_t recv_dump(int sock, const struct tea_request *req) {
-  char filename[TEA_MAX_BASENAME_LEN + sizeof TEA_DUMP_EXT];
-  struct tea_header header;
-  struct tea_response response;
-  int dumpfd;
-
-  socklen_t bufsz;
+static size_t get_recvbufsz(int sock) {
+  static socklen_t bufsz = 0; /* cached value */
   socklen_t optlen;
-  void *buf;
 
-  size_t offset;
-  ssize_t recvb;
+  if (bufsz)
+    return bufsz;
 
-  /* ask for data transfer */
-  if (send_request(sock, req) < 0)
-    return -1;
-
-  if (recv_header(sock, TEA_ANY, &header) < 0)
-    return -1;
-
-  /* check reply */
-  switch (header.type) {
-  case TEA_DATA_TRANSFER:
-    break; /* good */
-
-  case TEA_RESPONSE:
-    struct tea_response resp;
-
-    if (header.payloadsz != sizeof resp) {
-      fprintf(stderr, "unexpected header payloadsz\n");
-      return -1;
-    }
-
-    if (recvbuf(sock, &resp, sizeof resp) <= 0) {
-      fprintf(stderr, "failed to recv payload\n");
-      return -1;
-    }
-
-    fprintf(stderr, "got response: %s\n", resp.err_msg);
-    return -1;
-
-  default:
-    fprintf(stderr, "unexpected header type\n");
-    return -1;
-  }
-
-  /* create local dump file */
-  assemble_filename(req->basename, filename);
-
-  if ((dumpfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, DUMP_FILE_PERMS)) <
-      0) {
-    perror("open() failed");
-    return -1;
-  }
-
-  /* allocate read buffer */
   optlen = sizeof bufsz;
 
   if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufsz, &optlen) < 0) {
     perror("getsockopt() failed");
-    goto err_close;
+    return bufsz = 0;
   }
 
   if (optlen != sizeof bufsz) {
     fprintf(stderr, "type mismatch getting SO_RCVBUF\n");
-    goto err_close;
+    return bufsz = 0;
+  }
+
+  return bufsz;
+}
+
+ssize_t recv_dump(int sock, int dumpfd) {
+  struct tea_header transfer;
+  size_t bufsz;
+  void *buf;
+  size_t offset;
+  ssize_t recvb;
+
+  /* read data transfer header */
+  if (recv_header(sock, TEA_DATA_TRANSFER, &transfer) < 0) {
+    fprintf(stderr, "failed to get data transfer header\n");
+    return -1;
+  }
+
+  /* allocate read buffer */
+  if (!(bufsz = get_recvbufsz(sock))) {
+    fprintf(stderr, "get_recvbufsz() failed\n");
+    return -1;
   }
 
   if (!(buf = malloc(bufsz))) {
     perror("malloc() failed");
-    goto err_close;
+    return -1;
   }
 
-  /* buffered read... */
-
+  /* buffered read from sock to file */
   printf("receiving dump file... ");
   fflush(stdout);
 
   offset = 0;
 
-  while (offset < header.payloadsz) {
-    if ((recvb = recvbuf(sock, buf, MIN(bufsz, header.payloadsz - offset))) <
+  while (offset < transfer.payloadsz) {
+    if ((recvb = recvbuf(sock, buf, MIN(bufsz, transfer.payloadsz - offset))) <
         0) {
       fprintf(stderr, "recvbuf() failed\n");
-      goto err_free;
+      goto err_free_buf;
     }
 
     if (recvb == 0) {
       fprintf(stderr, "recvbuf(): connection closed\n");
-      goto err_free;
+      goto err_free_buf;
     }
 
     if (writebuf(dumpfd, buf, recvb) < 0) {
       fprintf(stderr, "writebuf() failed\n");
-      goto err_free;
+      goto err_free_buf;
     }
 
     offset += recvb;
   }
 
-  recv_response(sock, &response);
-
   printf("done\n");
+  printf("%zd bytes transferred\n", offset);
 
   free(buf);
-  close(dumpfd);
-  return 0;
+  return offset;
 
-err_free:
+err_free_buf:
   free(buf);
-
-err_close:
-  close(dumpfd);
   return -1;
 }

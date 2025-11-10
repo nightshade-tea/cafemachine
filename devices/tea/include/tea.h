@@ -40,7 +40,6 @@ enum tea_cmd { TEA_DUMP_STRICT, TEA_DUMP_RELAXED, TEA_RECV_DUMP, TEA_CMD_CNT };
 enum tea_status { TEA_SUCCESS, TEA_FAIL, TEA_STATUS_CNT };
 
 enum tea_msg_type {
-    TEA_ANY,
     TEA_RESPONSE,
     TEA_REQUEST,
     TEA_DATA_TRANSFER,
