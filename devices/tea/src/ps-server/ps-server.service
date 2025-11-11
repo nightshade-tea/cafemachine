@@ -1,0 +1,10 @@
+[Unit]
+Description=Serves PID list through TCP socket
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ps-server 7735
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
