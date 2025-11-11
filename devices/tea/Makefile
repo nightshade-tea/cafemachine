@@ -19,7 +19,7 @@ run:
 		-m $(RAM)                                                 \
 		-boot c                                                   \
 		-drive file=$(DRIVE),format=qcow2,if=virtio,cache=writeback \
-		-netdev user,id=net0                                      \
+		-netdev user,id=net0,hostfwd=tcp::7735-:7735               \
 		-device virtio-net-pci,netdev=net0                        \
 		-virtfs local,path=$(ROOT),mount_tag=share9p,security_model=mapped-xattr,id=shared9p \
 		-device pcie-root-port,id=rp1,bus=pcie.0,chassis=1,slot=1 \
