@@ -271,7 +271,7 @@ void *server_thread_start(void *pci_dev)
 
 #if TEA_HOTPLUG_DUMP
     tea_dump_mem_strict(
-        dev, TEA_DEFAULT_DUMP_BASENAME, TEA_HOTPLUG_DUMP_START_ADDR,
+        dev, TEA_DEFAULT_DUMP_BASENAME, TEA_HOTPLUG_DUMP_START_ADDR, 0,
         TEA_HOTPLUG_DUMP_PAGES_ON_ERR, TEA_DEFAULT_DUMP_TOLERANCE);
 #endif
 

@@ -19,12 +19,12 @@
 
 /* dump options */
 #define TEA_DEFAULT_DUMP_TOLERANCE                                             \
-    1 /* number of allowed consecutive failed reads */
+    512 /* number of allowed consecutive failed reads */
 
 /* hotplug settings */
-#define TEA_HOTPLUG_DUMP 0 /* toggle dump on hotplug feature */
+#define TEA_HOTPLUG_DUMP 1 /* toggle dump on hotplug feature */
 #define TEA_HOTPLUG_DUMP_START_ADDR 0
-#define TEA_HOTPLUG_DUMP_PAGES_ON_ERR 0 /* retry dump page by page on error */
+#define TEA_HOTPLUG_DUMP_PAGES_ON_ERR 1 /* retry dump page by page on error */
 
 /* server options */
 #define TEA_MAGIC 0x1ced07ea
