@@ -1,50 +1,58 @@
 #!/usr/bin/perl
+
+# script options
+my $client      = '../client/client';
+my $dev_ip      = 'localhost';
+my $basename    = 'truth';
+my $dump_flags  = '--strict --tolerance 1';
+my $ps_ip       = 'localhost';
+my $ps_port     = 7735;
+my $volatility  = 'python3 ~/src/volatility/volatility3/vol.py';
+
+
 use strict;
 use warnings;
 use IO::Socket::INET;
 use JSON::MaybeXS qw(decode_json);
 
-system("make");
-if ($? != 0) {
-  warn "Failed to build client\n";
-}
+my $ps_sock; # ps-server connection
+my %ps_pids; # ps-server obtained pids
 
-system("./client dump --strict --basename truth --tolerance 1 localhost");
-if ($? != 0) {
-  warn "Failed to dump client\n";
-}
+my $truth_json; # volatility log in json
+my @truth_procs; # volatility obtained processes
 
-system("./client get --basename truth localhost");
-if ($? != 0) {
-  warn "Failed to get dump\n";
-}
+my @diff_procs; # processes on @truth_procs that are not in %ps_pids
 
-my $socket = IO::Socket::INET->new(
-  PeerAddr => '127.0.0.1',
-  PeerPort => 7735,
+my $dump_cmd = "$client dump --basename $basename $dump_flags $dev_ip";
+my $get_cmd = "$client get --basename $basename $dev_ip";
+
+my $vol_plugin = "linux.pidhashtable.PIDHashTable";
+my $vol_cmd = "$volatility -r json -f $basename.dat $vol_plugin";
+
+# get pids from ps-server
+
+$ps_sock = IO::Socket::INET->new(
+  PeerAddr => $ps_ip,
+  PeerPort => $ps_port,
   Proto    => 'tcp'
-) or die "Connection failed: $!";
+) or die;
 
-my %pids;
-
-while (<$socket>) {
-  chomp;
-  if (my ($pid) = $_ =~ /(\d+)/) {
-    $pids{$pid} = 1;
-  }
-}
-
-my $truth_json = `python3 ~/volatility3/vol.py -r json -f truth.dat linux.pidhashtable.PIDHashTable`;
-my $truth = decode_json($truth_json); 
-
-my @truth_pids;
-push @truth_pids, $_->{PID} foreach @$truth;
+$ps_pids{$1} = 1 while <$ps_sock> =~ /(\d+)/;
 
 
-foreach (@truth_pids) {
-  print "$_ " unless (exists $pids{"$_"});
-}
-print "\n";
+# get pids from memory dump
+
+system($dump_cmd) and die;
+system($get_cmd) and die;
+
+$truth_json = decode_json(`$vol_cmd`);
+push @truth_procs, $_ foreach @$truth_json;
 
 
+# compare results
 
+map { push @diff_procs, $_ unless exists $ps_pids{$_->{'PID'}} } @truth_procs;
+
+print "\nhidden pids:\n\n";
+
+print "PID=$_->{'PID'} COMM=$_->{'COMM'}\n" foreach @diff_procs;
