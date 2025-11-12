@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -53,9 +54,15 @@ void *send_ps(void *opaque)
     }
 
     while (fgets(pid, PID_MAX_LEN, ps)) {
-        ssize_t pid_len = strlen(pid) + 1;
+        ssize_t pid_len;
+        uint32_t i = 0;
 
-        if (send(conn, pid, pid_len, 0) < pid_len) {
+        while (isspace(pid[i])) {
+            i++;
+        }
+        pid_len = strlen(pid) - i + 1;
+
+        if (send(conn, pid + i, pid_len, 0) < pid_len) {
             perror("send() failed");
             break;
         }
