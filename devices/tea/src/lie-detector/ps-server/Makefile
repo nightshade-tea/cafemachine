@@ -1,6 +1,6 @@
 MAIN := ps-server
 CC := gcc
-CFLAGS := -Wall -Wextra -g -I. -I../../include
+CFLAGS := -Wall -Wextra -g -I.
 
 $(MAIN): $(patsubst %.c,%.o,$(wildcard *.c))
 
