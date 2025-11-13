@@ -13,7 +13,8 @@ my $basename    = 'truth';
 my $dump_flags  = '--strict --tolerance 1';
 my $ps_ip       = 'localhost';
 my $ps_port     = 7735;
-my $volatility  = 'python3 ~/src/volatility/volatility3/vol.py';
+my $volatility_path = $ARGV[0] // '~/src/volatility/volatility3/vol.py';
+my $volatility  = "python3 $volatility_path";
 my $vol_plugin  = "linux.pidhashtable.PIDHashTable";
 
 
