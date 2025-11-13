@@ -1,6 +1,12 @@
 #!/usr/bin/perl
 
-# script options
+use strict;
+use warnings;
+use IO::Socket::INET;
+use JSON::MaybeXS qw(decode_json);
+
+# script options ---------------------------------------------------------------
+
 my $client      = '../client/client';
 my $dev_ip      = 'localhost';
 my $basename    = 'truth';
@@ -8,51 +14,72 @@ my $dump_flags  = '--strict --tolerance 1';
 my $ps_ip       = 'localhost';
 my $ps_port     = 7735;
 my $volatility  = 'python3 ~/src/volatility/volatility3/vol.py';
+my $vol_plugin  = "linux.pidhashtable.PIDHashTable";
 
 
-use strict;
-use warnings;
-use IO::Socket::INET;
-use JSON::MaybeXS qw(decode_json);
+# get pids from ps-server ------------------------------------------------------
 
-my $ps_sock; # ps-server connection
-my %ps_pids; # ps-server obtained pids
+print "1. GET PIDS FROM PS-SERVER\n\n";
 
-my $truth_json; # volatility log in json
-my @truth_procs; # volatility obtained processes
+print "CONNECTING TO PS-SERVER AT $ps_ip:$ps_port ";
 
-my @diff_procs; # processes on @truth_procs that are not in %ps_pids
-
-my $dump_cmd = "$client dump --basename $basename $dump_flags $dev_ip";
-my $get_cmd = "$client get --basename $basename $dev_ip";
-
-my $vol_plugin = "linux.pidhashtable.PIDHashTable";
-my $vol_cmd = "$volatility -r json -f $basename.dat $vol_plugin";
-
-# get pids from ps-server
-
-$ps_sock = IO::Socket::INET->new(
+my $ps_sock = IO::Socket::INET->new(
   PeerAddr => $ps_ip,
   PeerPort => $ps_port,
   Proto    => 'tcp'
 ) or die;
 
+print "OK\n";
+
+print "RECEIVING PIDS ";
+
+my %ps_pids;
+
 $ps_pids{$1} = 1 while <$ps_sock> =~ /(\d+)/;
 
-
-# get pids from memory dump
-
-system($dump_cmd) and die;
-system($get_cmd) and die;
-
-$truth_json = decode_json(`$vol_cmd`);
-push @truth_procs, $_ foreach @$truth_json;
+print "OK\n\n";
 
 
-# compare results
+# get pids from memory dump ----------------------------------------------------
 
-map { push @diff_procs, $_ unless exists $ps_pids{$_->{'PID'}} } @truth_procs;
+print "2. GET PIDS FROM MEMORY DUMP\n\n";
 
-print "\nhidden pids:\n\n";
+print "TRIGGER DUMP\n\n";
 
+system("$client dump --basename $basename $dump_flags $dev_ip") and die;
+
+print "\nTRANSFER DATA\n\n";
+
+system("$client get --basename $basename $dev_ip") and die;
+
+print "\nANALYZE WITH VOLATILITY\n\n";
+
+my $truth_json = `$volatility -r json -f $basename.dat $vol_plugin`;
+
+die if $?;
+
+print "\n\nPARSE VOLATILITY RESULTS ";
+
+my $truth_procs = decode_json($truth_json);
+
+print "OK\n\n";
+
+
+# compare results --------------------------------------------------------------
+
+print "3. COMPARE RESULTS\n\n";
+
+print "FILTER PROCESSES DETECTED BY VOLATILITY AND NOT DETECTED BY PS-SERVER ";
+
+my @diff_procs = grep { !exists $ps_pids{$_->{'PID'}} } @$truth_procs;
+
+print "OK\n";
+
+if (!@diff_procs) {
+  print "\nNO HIDDEN PROCESSES FOUND.\n\n";
+  exit 0;
+}
+
+print "\nHIDDEN PROCESSES:\n\n";
 print "PID=$_->{'PID'} COMM=$_->{'COMM'}\n" foreach @diff_procs;
+print "\n";
