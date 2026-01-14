@@ -46,11 +46,13 @@ void *send_ps(void *opaque) {
   char pid[PID_MAX_LEN];
   int conn = *((int *)opaque);
 
+  /* executes the ps command and stores on the FILE pointer */
   if (!(ps = popen(PS_CMD, "r"))) {
     perror("popen() failed");
     return NULL;
   }
 
+  /* iterates through pids and sends to the client */
   while (fgets(pid, PID_MAX_LEN, ps)) {
     ssize_t pid_len;
     uint32_t i = 0;
