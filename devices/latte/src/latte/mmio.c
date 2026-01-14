@@ -1,6 +1,5 @@
 #include "mmio.h"
 #include "dma.h"
-#include "dump.h"
 #include "irq.h"
 #include "latte_log.h"
 #include <sys/param.h>

@@ -1,11 +1,9 @@
 #include "kmod.h"
-#include "chrdev.h"
 #include "data.h"
 #include "dma.h"
 #include "irq.h"
 #include "latte.h"
 #include "mmio.h"
-#include "utils.h"
 
 /* specifies which devices the driver supports */
 static struct pci_device_id latte_id_table[] = {
