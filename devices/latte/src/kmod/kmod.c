@@ -77,8 +77,6 @@ err_latte_dma_enable:
 	latte_irq_disable(pdev);
 
 err_latte_irq_enable:
-	latte_chrdev_destroy(pdev);
-
 err_pci_set_mwi:
 err_latte_mmio_enable:
 	pci_disable_device(pdev);
