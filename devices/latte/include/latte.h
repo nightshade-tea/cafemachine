@@ -22,29 +22,22 @@
 #define LATTE_IRQ_MAX_VECTORS 32
 
 /* interrupt vector values */
-__LATTE_ENUM(
-    latte_irq_vec,
-    LATTE_INT_DMA_BUF_AVAILABLE, /* notify a dma operation completion */
-    LATTE_INT_VECTOR_CNT)
+__LATTE_ENUM(latte_irq_vec, LATTE_INT_FAIL, /* NOTIFY COMPLETION DAVID */
+             LATTE_INT_SUCCESS, LATTE_INT_VECTOR_CNT)
 
 /* device operations (valid LATTE_CMD values) */
 __LATTE_ENUM(latte_ops, LATTE_NOP,
-             LATTE_DMA_READ,  /* read DMA_SZ bytes from DMA_SRC to dma_buf */
-             LATTE_DMA_WRITE, /* write DMA_SZ bytes from dma_buf to DMA_DST */
+             LATTE_REGISTER_MR, /* register memory region */
 )
 
 /* device control registers */
 __LATTE_ENUM(latte_reg,
-             LATTE_CMD,     /* register for triggering device operations */
-             LATTE_DMA_SRC, /* source physical address to read into dma_buf */
-             LATTE_DMA_DST, /* destination physical address to write dma_buf */
-             LATTE_DMA_SZ,  /* dma operation read/write size */
+             LATTE_CMD, /* register for triggering device operations */
+             LATTE_ADDR, LATTE_REGION_SZ,
              LATTE_LOWER_INT, /* write the interrupt number to lower */
              LATTE_REG_CNT)
 
 /* driver operation completion ids (synchronization) */
-__LATTE_ENUM(latte_complete,
-             LATTE_WAIT_DMA, /* wait for dma operation completion */
-             LATTE_WAIT_CNT)
+__LATTE_ENUM(latte_complete, LATTE_WAIT_NOTIFY, LATTE_WAIT_CNT)
 
 #endif /* LATTE_H */
