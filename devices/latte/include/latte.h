@@ -22,8 +22,7 @@
 #define LATTE_IRQ_MAX_VECTORS 32
 
 /* interrupt vector values */
-__LATTE_ENUM(latte_irq_vec, LATTE_INT_FAIL, /* NOTIFY COMPLETION DAVID */
-             LATTE_INT_SUCCESS, LATTE_INT_VECTOR_CNT)
+__LATTE_ENUM(latte_irq_vec, LATTE_INT_SYNC, LATTE_INT_VECTOR_CNT)
 
 /* device operations (valid LATTE_CMD values) */
 __LATTE_ENUM(latte_ops, LATTE_NOP,

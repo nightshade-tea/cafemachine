@@ -2,8 +2,8 @@
 #include "data.h"
 #include "latte.h"
 
-/* interrupt handlers */
-static irqreturn_t latte_handler_dma_buf_available(int irq, void *data)
+/* generic interrupt handler */
+static irqreturn_t latte_handler(int irq, void *data)
 {
 	struct pci_dev *pdev;
 	struct device *dev;
@@ -13,19 +13,15 @@ static irqreturn_t latte_handler_dma_buf_available(int irq, void *data)
 	dev = &pdev->dev;
 	dev_data = pci_get_drvdata(pdev);
 
-	// dev_info(dev, "got interrupt %d (DMA_BUF_AVAILABLE)!\n", irq);
+	dev_info(dev, "got interrupt %d (%s)\n", irq, latte_irq_vec_str(irq));
 
-	complete(&dev_data->devop_done[LATTE_WAIT_DMA]);
+	complete(&dev_data->devop_done[LATTE_WAIT_NOTIFY]); /* sync */
 
-	writeq(LATTE_INT_DMA_BUF_AVAILABLE,
-	       dev_data->bar.mmio + LATTE_LOWER_INT * 8);
+	writeq(irq,
+	       dev_data->bar.mmio + LATTE_LOWER_INT * 8); /* TODO check irq */
 
 	return IRQ_HANDLED;
 }
-
-/* interrupt handlers array */
-static irqreturn_t (*const handlers[LATTE_INT_VECTOR_CNT])(int, void *) = {
-	latte_handler_dma_buf_available};
 
 int latte_irq_enable(struct pci_dev *pdev)
 {
@@ -33,6 +29,9 @@ int latte_irq_enable(struct pci_dev *pdev)
 	int err;
 
 	dev = &pdev->dev;
+
+	/* for some reason if we try to allocate more than 1 irq_vec we get
+	 * -ENOSPC ... */
 
 	/* allocate a contiguous block of interrupt vectors for our device */
 	if ((err = pci_alloc_irq_vectors(pdev, LATTE_INT_VECTOR_CNT,
@@ -54,7 +53,7 @@ int latte_irq_enable(struct pci_dev *pdev)
 			goto err_pci_irq_vector;
 		}
 
-		if ((err = request_irq(irqn, handlers[i], i, LATTE_HW_NAME,
+		if ((err = request_irq(irqn, latte_handler, i, LATTE_HW_NAME,
 				       pdev))) {
 			dev_err(dev, "request_irq() failed: %pe\n",
 				ERR_PTR(err));

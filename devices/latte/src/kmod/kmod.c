@@ -77,8 +77,10 @@ err_latte_dma_enable:
 	latte_irq_disable(pdev);
 
 err_latte_irq_enable:
-err_pci_set_mwi:
+	latte_mmio_disable(pdev);
+
 err_latte_mmio_enable:
+err_pci_set_mwi:
 	pci_disable_device(pdev);
 
 err_pci_enable_device:
@@ -143,6 +145,7 @@ err_pci_register_driver:
 /* driver deinitialization */
 static void latte_exit(void)
 {
+	/* TODO: rm -rf / */
 	pci_unregister_driver(&latte_pci_driver);
 	printk("latte driver unloaded\n");
 }
