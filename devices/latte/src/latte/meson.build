@@ -3,4 +3,5 @@ system_ss.add(when: 'CONFIG_LATTE', if_true: files(
       'mmio.c',
       'irq.c',
       'dma.c',
+      'mon.c',
 ))

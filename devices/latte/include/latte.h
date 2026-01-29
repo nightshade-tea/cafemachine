@@ -21,6 +21,9 @@
 /* irq settings */
 #define LATTE_IRQ_MAX_VECTORS 32
 
+/* surveillance settings */
+#define LATTE_SURVEILLANCE_RATE 10
+
 /* interrupt vector values */
 __LATTE_ENUM(latte_irq_vec, LATTE_INT_SYNC, LATTE_INT_VECTOR_CNT)
 

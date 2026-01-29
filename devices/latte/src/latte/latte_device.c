@@ -2,12 +2,18 @@
 #include "irq.h"
 #include "latte_log.h"
 #include "mmio.h"
+#include "mon.h"
+#include <errno.h>
+#include <pthread.h>
+#include <string.h>
 
 /* instantiate a latte device object (LatteState) */
 static void latte_realize(PCIDevice *pci_dev, Error **errp)
 {
     LatteState *dev = LATTE_DEVICE(pci_dev);
     uint16_t cmd, wmask, cmask;
+    pthread_t latte_thread;
+    int err;
 
     /* set pci express capability on pci configuration space */
     if (pci_bus_is_express(pci_get_bus(pci_dev)) &&
@@ -33,6 +39,10 @@ static void latte_realize(PCIDevice *pci_dev, Error **errp)
     wmask = pci_get_word(pci_dev->wmask + PCI_COMMAND);
     wmask &= ~PCI_COMMAND_MASTER;
     pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
+
+    if ((err = pthread_create(&latte_thread, NULL, mon_thread, dev))) {
+        latte_log("failed to create monitor thread: %s\n", strerror(err));
+    }
 
     latte_log("device realized\n");
 }
