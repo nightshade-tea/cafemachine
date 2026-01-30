@@ -16,7 +16,12 @@
 #define LATTE_REG_SZ 8
 
 /* dma settings */
-#define LATTE_DMA_BUF_SZ (2 * 0x100000) /* 2 MiB */
+#define LATTE_DMA_READ_SZ (2 * 0x100000) /* 2 MiB */
+#define LATTE_PAGE_SZ 4096
+
+/* dump options */
+#define LATTE_DEFAULT_DUMP_TOLERANCE                                           \
+    512 /* number of allowed consecutive failed reads */
 
 /* irq settings */
 #define LATTE_IRQ_MAX_VECTORS 32

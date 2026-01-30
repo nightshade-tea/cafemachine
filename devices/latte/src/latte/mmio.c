@@ -78,7 +78,7 @@ static void latte_mmio_write(void *opaque, hwaddr addr, uint64_t data,
         return;
 
     case LATTE_DMA_SZ:
-        dev->reg[LATTE_DMA_SZ] = MIN(data, LATTE_DMA_BUF_SZ);
+        dev->reg[LATTE_DMA_SZ] = MIN(data, LATTE_DMA_READ_SZ);
         return;
 
     case LATTE_LOWER_INT:

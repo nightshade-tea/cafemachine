@@ -6,6 +6,7 @@
 #include <sys/queue.h>
 #include <unistd.h>
 
+#include "dump.h"
 #include "latte.h"
 #include "latte_device.h"
 #include "latte_log.h"

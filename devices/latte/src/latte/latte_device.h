@@ -29,7 +29,7 @@ typedef struct LatteState {
     bool irq[LATTE_IRQ_MAX_VECTORS];
 
     /* dma read/write buffer */
-    uint8_t dma_buf[LATTE_DMA_BUF_SZ];
+    uint8_t dma_buf[LATTE_DMA_READ_SZ];
 } LatteState;
 
 #endif /* LATTE_DEVICE_H */
