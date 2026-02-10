@@ -2,7 +2,7 @@ obj-m += latte.o
 latte-objs += kmod.o data.o mmio.o irq.o dma.o
 ccflags-y := -I$(src)/../../include
 
-all: format
+all:
 	$(MAKE) -j$(shell nproc) -C /lib/modules/$(shell uname -r)/build M=$(PWD) \
 		modules
 
