@@ -9,27 +9,28 @@
 
 /* -------------------------------------------------------------------------- */
 
-/* find any kernel symbol with kallsyms_lookup_name */
-static void *ksymbol_addr(const char *name)
+static typeof(kallsyms_lookup_name) *__kallsyms_lookup_name;
+static typeof(x64_sys_call) *__x64_sys_call;
+
+static int get_unexported_symbols(void)
 {
-	static unsigned long (*kallsyms_lookup_name)(const char *name) = NULL;
+	struct kprobe kp = {
+		.symbol_name = "kallsyms_lookup_name",
+	};
 
-	/* find kallsyms_lookup_name with kprobe */
-	if (!kallsyms_lookup_name) {
-		struct kprobe kp = {
-			.symbol_name = "kallsyms_lookup_name",
-		};
+	if (register_kprobe(&kp))
+		return -1;
 
-		if (register_kprobe(&kp))
-			return NULL;
+	__kallsyms_lookup_name = (void *)kp.addr;
+	unregister_kprobe(&kp);
 
-		if (!(kallsyms_lookup_name = (void *)kp.addr))
-			return NULL;
+	if (!__kallsyms_lookup_name)
+		return -1;
 
-		unregister_kprobe(&kp);
-	}
+	if (!(__x64_sys_call = (void *)__kallsyms_lookup_name("x64_sys_call")))
+		return -1;
 
-	return (void *)kallsyms_lookup_name(name);
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -155,42 +156,21 @@ static struct pci_driver latte_pci_driver = {
 /* driver initialization */
 static int __init latte_init(void)
 {
-	typeof(_printk) *kp_printk;
-	void *x64_sys_call;
 	int err;
 
 	/* ------------------------------------------------------------------------
 	 */
 
-	/* TODO
-	 * - meaningful errors
-	 * - test if phys addr for x64_sys_call is accurate (why is is different
-	 * from /proc/kallsyms?)
-	 * - save x64_sys_call in a global static variable
-	 * - register it with the device on latte_probe */
-
-	/* test ksymbol_addr */
-	kp_printk = ksymbol_addr("_printk");
-
-	if (!kp_printk) {
-		pr_err("kp_printk is null\n");
+	if (get_unexported_symbols()) {
+		pr_err("get_unexported_symbols() failed\n");
 		return -1;
 	}
 
-	if (kp_printk != _printk) {
-		pr_err("kp_printk is not equal to _printk\n");
-		return -1;
-	}
-
-	kp_printk("hello from kp_printk");
-
-	if (!(x64_sys_call = ksymbol_addr("x64_sys_call"))) {
-		pr_err("x64_sys_call is null\n");
-		return -1;
-	}
-
-	printk("x64_sys_call = %p (virt) %p (phys)", x64_sys_call,
-	       (void *)virt_to_phys(x64_sys_call));
+	/* __pa_symbol() ? */
+	printk("__x64_sys_call = %#llx (virt) %#llx (virt_to_phys) %#llx "
+	       "(__pa_symbol)\n",
+	       __x64_sys_call, (void *)virt_to_phys(__x64_sys_call),
+	       (void *)__pa_symbol(__x64_sys_call));
 
 	/* ------------------------------------------------------------------------
 	 */
@@ -212,7 +192,6 @@ err_pci_register_driver:
 /* driver deinitialization */
 static void latte_exit(void)
 {
-	/* TODO: rm -rf / */
 	pci_unregister_driver(&latte_pci_driver);
 	printk("latte driver unloaded\n");
 }
