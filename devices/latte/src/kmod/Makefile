@@ -1,5 +1,5 @@
 obj-m += latte.o
-latte-objs += kmod.o data.o mmio.o irq.o dma.o
+latte-objs += kmod.o data.o mmio.o irq.o dma.o integrity.o
 ccflags-y := -I$(src)/../../include
 
 all:

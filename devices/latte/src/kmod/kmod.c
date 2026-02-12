@@ -1,39 +1,10 @@
 #include "kmod.h"
 #include "data.h"
 #include "dma.h"
+#include "integrity.h"
 #include "irq.h"
 #include "latte.h"
 #include "mmio.h"
-
-#include <linux/kprobes.h>
-
-/* -------------------------------------------------------------------------- */
-
-static typeof(kallsyms_lookup_name) *__kallsyms_lookup_name;
-static typeof(x64_sys_call) *__x64_sys_call;
-
-static int get_unexported_symbols(void)
-{
-	struct kprobe kp = {
-		.symbol_name = "kallsyms_lookup_name",
-	};
-
-	if (register_kprobe(&kp))
-		return -1;
-
-	__kallsyms_lookup_name = (void *)kp.addr;
-	unregister_kprobe(&kp);
-
-	if (!__kallsyms_lookup_name)
-		return -1;
-
-	if (!(__x64_sys_call = (void *)__kallsyms_lookup_name("x64_sys_call")))
-		return -1;
-
-	return 0;
-}
-
-/* -------------------------------------------------------------------------- */
 
 /* specifies which devices the driver supports */
 static struct pci_device_id latte_id_table[] = {
@@ -158,32 +129,20 @@ static int __init latte_init(void)
 {
 	int err;
 
-	/* ------------------------------------------------------------------------
-	 */
-
-	if (get_unexported_symbols()) {
-		pr_err("get_unexported_symbols() failed\n");
-		return -1;
+	if ((err = latte_integrity_init())) {
+		pr_err("latte_integrity_init() failed: %pe\n", ERR_PTR(err));
+		goto err_exit;
 	}
-
-	/* __pa_symbol() ? */
-	printk("__x64_sys_call = %#llx (virt) %#llx (virt_to_phys) %#llx "
-	       "(__pa_symbol)\n",
-	       __x64_sys_call, (void *)virt_to_phys(__x64_sys_call),
-	       (void *)__pa_symbol(__x64_sys_call));
-
-	/* ------------------------------------------------------------------------
-	 */
 
 	if ((err = pci_register_driver(&latte_pci_driver))) {
 		pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
-		goto err_pci_register_driver;
+		goto err_exit;
 	}
 
 	printk("latte driver loaded\n");
 	return 0;
 
-err_pci_register_driver:
+err_exit:
 
 	pr_err("failed to load latte driver!\n");
 	return err;
