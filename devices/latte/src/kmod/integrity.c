@@ -4,8 +4,12 @@
 
 #include <linux/kprobes.h>
 
-static typeof(kallsyms_lookup_name) *__kallsyms_lookup_name;
-static typeof(x64_sys_call) *__x64_sys_call;
+/* unexported symbols */
+static struct {
+	typeof(kallsyms_lookup_name) *kallsyms_lookup_name;
+	typeof(kallsyms_lookup_size_offset) *kallsyms_lookup_size_offset;
+	typeof(x64_sys_call) *x64_sys_call;
+} sym;
 
 int latte_integrity_init(void)
 {
@@ -18,11 +22,29 @@ int latte_integrity_init(void)
 	if ((err = register_kprobe(&kp)))
 		return err;
 
-	__kallsyms_lookup_name = (void *)kp.addr;
+	sym.kallsyms_lookup_name = (void *)kp.addr;
 	unregister_kprobe(&kp);
 
-	if (!(__x64_sys_call = (void *)__kallsyms_lookup_name("x64_sys_call")))
+	if (!(sym.kallsyms_lookup_size_offset =
+		      (void *)sym.kallsyms_lookup_name(
+			      "kallsyms_lookup_size_offset")))
 		return -ENOENT;
+
+	if (!(sym.x64_sys_call =
+		      (void *)sym.kallsyms_lookup_name("x64_sys_call")))
+		return -ENOENT;
+
+	return 0;
+}
+
+int latte_register_protected_regions(struct pci_dev *pdev)
+{
+	struct latte_dev_data *data;
+	struct device *dev;
+	int err;
+
+	dev = &pdev->dev;
+	data = pci_get_drvdata(pdev);
 
 	return 0;
 }
