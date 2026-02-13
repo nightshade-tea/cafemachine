@@ -96,7 +96,7 @@ int latte_register_protected_regions(struct pci_dev *pdev)
 
 		/* send command to register protected memory region */
 		latte_reg_write(pdev, LATTE_ADDR,
-				(unsigned long)protected_regions[i].addr);
+				__pa_symbol(protected_regions[i].addr));
 		latte_reg_write(pdev, LATTE_REGION_SZ,
 				protected_regions[i].size);
 		latte_reg_write(pdev, LATTE_CMD, LATTE_REGISTER_MR);
