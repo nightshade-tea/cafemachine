@@ -71,9 +71,16 @@ static int latte_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_latte_dma_enable;
 	}
 
+	if ((err = latte_register_protected_regions(pdev))) {
+		dev_err(dev, "latte_register_protected_regions() failed: %pe\n",
+			ERR_PTR(err));
+		goto err_latte_register_protected_regions;
+	}
+
 	dev_info(dev, "latte device initialized\n");
 	return 0;
 
+err_latte_register_protected_regions:
 err_latte_dma_enable:
 	latte_irq_disable(pdev);
 
