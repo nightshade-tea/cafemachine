@@ -22,12 +22,14 @@
 /* dump options */
 #define LATTE_DEFAULT_DUMP_TOLERANCE                                           \
     512 /* number of allowed consecutive failed reads */
+#define LATTE_MIN_DUMP_SIZE 0x1000
 
 /* irq settings */
 #define LATTE_IRQ_MAX_VECTORS 32
 
 /* surveillance settings */
 #define LATTE_SURVEILLANCE_RATE 10
+#define LATTE_HASH_ALGO EVP_sha256
 
 /* interrupt vector values */
 __LATTE_ENUM(latte_irq_vec, LATTE_INT_SYNC, LATTE_INT_VECTOR_CNT)
@@ -46,5 +48,9 @@ __LATTE_ENUM(latte_reg,
 
 /* driver operation completion ids (synchronization) */
 __LATTE_ENUM(latte_complete, LATTE_WAIT_NOTIFY, LATTE_WAIT_CNT)
+
+/* memory region status */
+__LATTE_ENUM(latte_mr_status, LATTE_MR_STATUS_UNKNOWN, LATTE_MR_STATUS_NORMAL,
+             LATTE_MR_STATUS_CORRUPTED)
 
 #endif /* LATTE_H */

@@ -17,7 +17,7 @@ static int dump_pages(LatteState *dev, char *buf, hwaddr first, hwaddr last)
         /* read memory */
         if ((err = pci_dma_read(&dev->pci_dev, first, buf + buf_offset,
                                 readsz)) != MEMTX_OK) {
-            memset(dev->dma_buf + buf_offset, 0, readsz);
+            memset(buf + buf_offset, 0, readsz);
         }
 
         else {
@@ -27,7 +27,6 @@ static int dump_pages(LatteState *dev, char *buf, hwaddr first, hwaddr last)
         first += readsz;
         buf_offset += readsz;
     }
-
     return all_failed;
 }
 
@@ -65,7 +64,6 @@ static int dump_mem(LatteState *dev, char *buf, hwaddr first, hwaddr last,
                 }
             }
 
-            offset += readsz;
         }
 
         else {
@@ -76,6 +74,7 @@ static int dump_mem(LatteState *dev, char *buf, hwaddr first, hwaddr last,
             failed_reads = 0;
         }
 
+        offset += readsz;
         first += readsz;
     }
 

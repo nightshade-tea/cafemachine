@@ -2,6 +2,7 @@
 #define MON_H
 
 #include <errno.h>
+#include <openssl/evp.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <unistd.h>
@@ -16,6 +17,10 @@
 struct mem_region {
     hwaddr start_addr;
     hwaddr end_addr;
+
+    enum latte_mr_status status;
+    unsigned char hash[EVP_MAX_MD_SIZE];
+
     LIST_ENTRY(mem_region) regions;
 };
 
