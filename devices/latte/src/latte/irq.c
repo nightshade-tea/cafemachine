@@ -30,6 +30,18 @@ void latte_irq_raise(LatteState *dev, unsigned int vector)
     latte_log("irq %s raised\n", latte_irq_vec_str(vector));
 }
 
+void latte_nmi_raise(LatteState *dev, unsigned int vector)
+{
+    MSIMessage msg;
+
+    msg = msi_get_message(&dev->pci_dev, vector);
+
+    msg.data &= ~(0b011 << 8);
+    msg.data |= 0b100 << 8;
+
+    msi_send_message(dev, msg);
+}
+
 void latte_irq_lower(LatteState *dev, unsigned int vector)
 {
     if (vector >= LATTE_INT_VECTOR_CNT) {

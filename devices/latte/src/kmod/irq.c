@@ -1,6 +1,13 @@
 #include "irq.h"
 #include "data.h"
 #include "latte.h"
+#include <asm/nmi.h>
+
+static int latte_nmi_handler(unsigned int val, struct pt_regs *regs)
+{
+	pr_info("LATTE NMI HANDLED");
+	return NMI_HANDLED;
+}
 
 static irqreturn_t latte_handler(int irq, void *opaque)
 {
@@ -67,6 +74,9 @@ int latte_irq_enable(struct pci_dev *pdev)
 			goto err_request_irq;
 		}
 	}
+
+	register_nmi_handler(NMI_UNKNOWN, latte_nmi_handler, 0,
+			     "latte-custom-handler");
 
 	return 0;
 

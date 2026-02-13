@@ -1,4 +1,5 @@
 #include "mon.h"
+#include "irq.h"
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <stdio.h>
@@ -154,6 +155,8 @@ void *mon_thread(void *pci_dev)
             surveil(dev, mr);
             if (mr->status == LATTE_MR_STATUS_CORRUPTED) {
                 // TODO raise nmi
+                latte_nmi_raise(dev, 0);
+                latte_nmi_raise(dev, 0); // first is dropped
                 latte_log("memory region [%#" HWADDR_PRIx " - %#" HWADDR_PRIx
                           "] corrupted!!!\n",
                           mr->start_addr, mr->end_addr);
