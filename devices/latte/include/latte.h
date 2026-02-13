@@ -28,8 +28,8 @@
 #define LATTE_IRQ_MAX_VECTORS 32
 
 /* surveillance settings */
-#define LATTE_SURVEILLANCE_RATE 10
-#define LATTE_HASH_ALGO EVP_sha256
+#define LATTE_SURVEILLANCE_RATE 5
+#define LATTE_HASH_ALGO EVP_sha256 /* look into openssl evp.h for options */
 
 /* interrupt vector values */
 __LATTE_ENUM(latte_irq_vec, LATTE_INT_SYNC, LATTE_INT_VECTOR_CNT)
