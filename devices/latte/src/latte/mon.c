@@ -76,11 +76,12 @@ int put_under_surveillance(hwaddr start_addr, hwaddr end_addr)
     return 0;
 }
 
-static void mock_addr()
-{
-    // put_under_surveillance(0x8000, 0x18000);
-    put_under_surveillance(0x1000, 0x2000);
+/*
+static void mock_addr() {
+  // put_under_surveillance(0x8000, 0x18000);
+  put_under_surveillance(0x1000, 0x2000);
 }
+*/
 
 static void surveil(LatteState *dev, struct mem_region *mr)
 {
@@ -137,7 +138,6 @@ void *mon_thread(void *pci_dev)
         return NULL;
     }
 
-    mock_addr();
     latte_log("surveillance thread started\n");
 
     for (;;) {

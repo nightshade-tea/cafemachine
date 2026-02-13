@@ -2,6 +2,7 @@
 #include "dma.h"
 #include "irq.h"
 #include "latte_log.h"
+#include "mon.h"
 #include <sys/param.h>
 
 /* if a read or write size is outside of the valid range, qemu automatically
@@ -23,14 +24,11 @@ static void latte_cmd(LatteState *dev)
     latte_log("got %s command\n", latte_ops_str(dev->reg[LATTE_CMD]));
 
     switch (dev->reg[LATTE_CMD]) {
-    case LATTE_DMA_READ:
-        latte_dma_read(dev);
-        latte_irq_raise(dev, LATTE_INT_DMA_BUF_AVAILABLE);
-        break;
-
-    case LATTE_DMA_WRITE:
-        latte_dma_write(dev);
-        latte_irq_raise(dev, LATTE_INT_DMA_BUF_AVAILABLE);
+    case LATTE_REGISTER_MR:
+        put_under_surveillance(dev->reg[LATTE_ADDR],
+                               dev->reg[LATTE_ADDR] +
+                                   dev->reg[LATTE_REGION_SZ]);
+        cafe_irq_raise(dev, LATTE_WAIT_NOTIFY);
         break;
     }
 
@@ -77,8 +75,12 @@ static void latte_mmio_write(void *opaque, hwaddr addr, uint64_t data,
         latte_cmd(dev);
         return;
 
-    case LATTE_DMA_SZ:
-        dev->reg[LATTE_DMA_SZ] = MIN(data, LATTE_DMA_READ_SZ);
+    case LATTE_ADDR:
+        dev->reg[LATTE_ADDR] = LATTE_ADDR;
+        return;
+
+    case LATTE_REGION_SZ:
+        dev->reg[LATTE_REGION_SZ] = LATTE_REGION_SZ;
         return;
 
     case LATTE_LOWER_INT:
