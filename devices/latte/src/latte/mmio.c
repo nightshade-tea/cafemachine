@@ -75,14 +75,6 @@ static void latte_mmio_write(void *opaque, hwaddr addr, uint64_t data,
         latte_cmd(dev);
         return;
 
-    case LATTE_ADDR:
-        dev->reg[LATTE_ADDR] = LATTE_ADDR;
-        return;
-
-    case LATTE_REGION_SZ:
-        dev->reg[LATTE_REGION_SZ] = LATTE_REGION_SZ;
-        return;
-
     case LATTE_LOWER_INT:
         latte_irq_lower(dev, data);
         return;
