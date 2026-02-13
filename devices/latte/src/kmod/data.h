@@ -11,9 +11,16 @@ struct latte_bar {
 	void __iomem *mmio; /* base virtual address */
 };
 
+/* msi! */
+struct latte_irq {
+	int base;      /* first virtual irq number */
+	int allocated; /* number of vectors allocated */
+};
+
 /* struct for device instance specific data */
 struct latte_dev_data {
 	struct latte_bar bar;
+	struct latte_irq irq;
 	struct completion devop_done[LATTE_WAIT_CNT]; /* sync operations */
 };
 

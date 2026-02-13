@@ -2,23 +2,32 @@
 #include "data.h"
 #include "latte.h"
 
-/* generic interrupt handler */
-static irqreturn_t latte_handler(int irq, void *data)
+static irqreturn_t latte_handler(int irq, void *opaque)
 {
 	struct pci_dev *pdev;
 	struct device *dev;
-	struct latte_dev_data *dev_data;
+	struct latte_dev_data *data;
+	int dev_irq;
 
-	pdev = (struct pci_dev *)data;
+	pdev = (struct pci_dev *)opaque;
 	dev = &pdev->dev;
-	dev_data = pci_get_drvdata(pdev);
+	data = pci_get_drvdata(pdev);
 
-	dev_info(dev, "got interrupt %d (%s)\n", irq, latte_irq_vec_str(irq));
+	dev_irq = irq - data->irq.base;
 
-	complete(&dev_data->devop_done[LATTE_WAIT_NOTIFY]); /* sync */
+	dev_info(dev, "got interrupt %d -> %d (%s)\n", irq, dev_irq,
+		 latte_irq_vec_str(dev_irq));
 
-	writeq(irq,
-	       dev_data->bar.mmio + LATTE_LOWER_INT * 8); /* TODO check irq */
+	switch (dev_irq) {
+	case LATTE_INT_SYNC:
+		complete(&data->devop_done[LATTE_WAIT_NOTIFY]);
+		break;
+	default:
+		dev_warn(dev, "unhandled interrupt %d -> %d !\n", irq, dev_irq);
+		break;
+	}
+
+	writeq(dev_irq, data->bar.mmio + LATTE_LOWER_INT * 8);
 
 	return IRQ_HANDLED;
 }
@@ -26,37 +35,35 @@ static irqreturn_t latte_handler(int irq, void *data)
 int latte_irq_enable(struct pci_dev *pdev)
 {
 	struct device *dev;
-	int err;
+	struct latte_dev_data *data;
+	int err, irqn;
 
 	dev = &pdev->dev;
+	data = pci_get_drvdata(pdev);
 
 	/* for some reason if we try to allocate more than 1 irq_vec we get
 	 * -ENOSPC ... */
 
 	/* allocate a contiguous block of interrupt vectors for our device */
-	if ((err = pci_alloc_irq_vectors(pdev, LATTE_INT_VECTOR_CNT,
-					 LATTE_INT_VECTOR_CNT, PCI_IRQ_MSI)) <
-	    0) {
+	if ((data->irq.allocated = pci_alloc_irq_vectors(
+		     pdev, LATTE_INT_VECTOR_CNT, LATTE_INT_VECTOR_CNT,
+		     PCI_IRQ_MSI)) < 0) {
+		err = data->irq.allocated;
 		dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n",
 			ERR_PTR(err));
 		goto err_pci_alloc_irq_vectors;
 	}
 
+	data->irq.base = pci_irq_vector(pdev, 0);
+
 	/* register the handlers for each interrupt vector */
-	for (int i = 0; i < LATTE_INT_VECTOR_CNT; i++) {
-		int irqn;
+	for (int i = 0; i < data->irq.allocated; i++) {
+		irqn = data->irq.base + i;
 
-		if ((irqn = pci_irq_vector(pdev, i)) < 0) {
-			err = irqn;
-			dev_err(dev, "pci_irq_vector() failed: %pe\n",
-				ERR_PTR(err));
-			goto err_pci_irq_vector;
-		}
-
-		if ((err = request_irq(irqn, latte_handler, i, LATTE_HW_NAME,
+		if ((err = request_irq(irqn, latte_handler, 0, LATTE_HW_NAME,
 				       pdev))) {
-			dev_err(dev, "request_irq() failed: %pe\n",
-				ERR_PTR(err));
+			dev_err(dev, "request_irq() failed (irqn=%d): %pe\n",
+				irqn, ERR_PTR(err));
 			goto err_request_irq;
 		}
 	}
@@ -65,7 +72,9 @@ int latte_irq_enable(struct pci_dev *pdev)
 
 err_request_irq:
 
-err_pci_irq_vector:
+	while (data->irq.base <= --irqn)
+		free_irq(irqn, pdev);
+
 	pci_free_irq_vectors(pdev);
 
 err_pci_alloc_irq_vectors:
@@ -75,12 +84,12 @@ err_pci_alloc_irq_vectors:
 
 void latte_irq_disable(struct pci_dev *pdev)
 {
-	int irqn;
+	struct latte_dev_data *data;
 
-	for (int i = 0; i < LATTE_INT_VECTOR_CNT; i++) {
-		if ((irqn = pci_irq_vector(pdev, i)) >= 0)
-			free_irq(irqn, pdev);
-	}
+	data = pci_get_drvdata(pdev);
+
+	for (int i = 0; i < data->irq.allocated; i++)
+		free_irq(data->irq.base + i, pdev);
 
 	pci_free_irq_vectors(pdev);
 }
