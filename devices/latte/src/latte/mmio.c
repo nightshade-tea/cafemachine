@@ -28,7 +28,7 @@ static void latte_cmd(LatteState *dev)
         put_under_surveillance(dev->reg[LATTE_ADDR],
                                dev->reg[LATTE_ADDR] +
                                    dev->reg[LATTE_REGION_SZ]);
-        cafe_irq_raise(dev, LATTE_WAIT_NOTIFY);
+        latte_irq_raise(dev, LATTE_WAIT_NOTIFY);
         break;
     }
 
