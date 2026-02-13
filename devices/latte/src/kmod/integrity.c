@@ -5,7 +5,6 @@
 #include "mmio.h"
 
 #include <linux/kprobes.h>
-#include <linux/list.h>
 
 enum protected_region_id {
 	REGION_X64_SYS_CALL,
