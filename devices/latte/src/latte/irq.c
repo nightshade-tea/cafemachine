@@ -39,7 +39,7 @@ void latte_nmi_raise(LatteState *dev, unsigned int vector)
     msg.data &= ~(0b011 << 8);
     msg.data |= 0b100 << 8;
 
-    msi_send_message(dev, msg);
+    msi_send_message(&dev->pci_dev, msg);
 }
 
 void latte_irq_lower(LatteState *dev, unsigned int vector)

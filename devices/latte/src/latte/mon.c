@@ -113,7 +113,7 @@ static void surveil(LatteState *dev, struct mem_region *mr)
         mr->status = LATTE_MR_STATUS_NORMAL;
         break;
     case LATTE_MR_STATUS_NORMAL:
-        if (strncmp(mr->hash, hash, EVP_MAX_MD_SIZE)) {
+        if (memcmp(mr->hash, hash, EVP_MAX_MD_SIZE)) {
             mr->status = LATTE_MR_STATUS_CORRUPTED;
         }
         break;
@@ -143,10 +143,6 @@ void *mon_thread(void *pci_dev)
 
     for (;;) {
         struct mem_region *mr = NULL;
-
-        if (!LIST_EMPTY(&surveillance_list)) {
-            continue;
-        }
 
         sleep(LATTE_SURVEILLANCE_RATE); // maracutaia
         latte_log("surveillance round starting...\n");
