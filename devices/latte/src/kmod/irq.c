@@ -75,10 +75,17 @@ int latte_irq_enable(struct pci_dev *pdev)
 		}
 	}
 
-	register_nmi_handler(NMI_UNKNOWN, latte_nmi_handler, 0,
-			     "latte-custom-handler");
+	if ((err = register_nmi_handler(NMI_UNKNOWN, latte_nmi_handler, 0,
+					"latte_nmi_handler"))) {
+		dev_err(dev, "request_nmi_handler() failed: %pe\n",
+			ERR_PTR(err));
+		goto err_request_nmi_handler;
+	}
 
 	return 0;
+
+err_request_nmi_handler:
+	irqn = data->irq.base + data->irq.allocated;
 
 err_request_irq:
 
@@ -97,6 +104,8 @@ void latte_irq_disable(struct pci_dev *pdev)
 	struct latte_dev_data *data;
 
 	data = pci_get_drvdata(pdev);
+
+	unregister_nmi_handler(NMI_UNKNOWN, "latte_nmi_handler");
 
 	for (int i = 0; i < data->irq.allocated; i++)
 		free_irq(data->irq.base + i, pdev);
