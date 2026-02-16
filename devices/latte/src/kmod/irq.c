@@ -5,7 +5,7 @@
 
 static int latte_nmi_handler(unsigned int val, struct pt_regs *regs)
 {
-	pr_info("LATTE NMI HANDLED");
+	pr_emerg("got an NMI from latte device!!\n");
 	return NMI_HANDLED;
 }
 

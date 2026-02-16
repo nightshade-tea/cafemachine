@@ -95,6 +95,17 @@ int latte_register_protected_regions(struct pci_dev *pdev)
 	for (enum protected_region_id i = 0; i < PROTECTED_REGIONS_CNT; i++) {
 
 		/* send command to register protected memory region */
+
+		/* this implementation assumes contiguous virtual memory will be
+		 * mapped to contiguous physical memory... unfortunately this
+		 * might not be true, so assume this as a lazy implementation
+		 * that should be more robust for serious purposes
+		 *
+		 * however, since we are only targeting built-in kernel symbols,
+		 * and the kernel image was probably loaded to a contiguous
+		 * chunk of physical memory, it will likely work and is fine for
+		 * now */
+
 		latte_reg_write(pdev, LATTE_ADDR,
 				__pa_symbol(protected_regions[i].addr));
 		latte_reg_write(pdev, LATTE_REGION_SZ,
