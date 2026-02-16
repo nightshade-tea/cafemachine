@@ -7,28 +7,29 @@
 enum hook_id { HOOK_GETDENTS64, HOOKS_CNT };
 
 static struct hook {
-
-	/* pointer to call/jmp instruction */
-	unsigned char *instr;
-
-	/* pointer to rel32 argument in call/jmp instruction */
-	s32 *rel32;
-
-	/* absolute addresses */
-	sys_call_ptr_t target;
+	const char *symbol;
 	sys_call_ptr_t trampoline;
 
-	/* near, relative to addr (rel32 argument) */
-	s32 rel_target;
-	s32 rel_trampoline;
-
+	/* runtime state */
+	sys_call_ptr_t target; /* symbol's function pointer */
+	s32 *rel32;	    /* ptr to rel32 argument in call/jmp instruction */
+	s32 rel_target;	    /* near, relative */
+	s32 rel_trampoline; /* near, relative */
 } hooks[HOOKS_CNT];
 
 static long getdents64(const struct pt_regs *regs)
 {
-	printk("getdents64() trampoline called!!\n");
+	// printk("getdents64() trampoline called!!\n");
 	return hooks[HOOK_GETDENTS64].target(regs);
 }
+
+static struct hook hooks[HOOKS_CNT] = {
+	[HOOK_GETDENTS64] =
+		{
+			.symbol = "__x64_sys_getdents64",
+			.trampoline = getdents64,
+		},
+};
 
 static void *ksymbol_addr(const char *name)
 {
@@ -82,6 +83,17 @@ static int ktext_write(void *addr, const void *opcode, size_t len)
 	return 0;
 }
 
+static void set_hook_targets(void)
+{
+	enum hook_id id;
+
+	for (id = 0; id < HOOKS_CNT; id++) {
+		if (!(hooks[id].target = ksymbol_addr(hooks[id].symbol)))
+			pr_warn("failed to find symbol %s, skipping\n",
+				hooks[id].symbol);
+	}
+}
+
 static int init_hooks(void)
 {
 	unsigned char *x64_sys_call;
@@ -93,17 +105,8 @@ static int init_hooks(void)
 	if (!(x64_sys_call_sz = ksymbol_size(x64_sys_call)))
 		return -ENODATA;
 
-	printk("x64_sys_call = [0x%px .. 0x%px] (%lu bytes)\n", x64_sys_call,
-	       (void *)((unsigned long)x64_sys_call + x64_sys_call_sz - 1),
-	       x64_sys_call_sz);
-
-	/* set targets and trampolines */
-
-	if (!(hooks[HOOK_GETDENTS64].target =
-		      ksymbol_addr("__x64_sys_getdents64")))
-		return -ENOSYS;
-
-	hooks[HOOK_GETDENTS64].trampoline = getdents64;
+	set_hook_targets();
+	printk("scanning x64_sys_call() ...\n");
 
 	for (unsigned long i = 0; i + 4 < x64_sys_call_sz; i++) {
 		unsigned char *instr = x64_sys_call + i;
@@ -118,39 +121,43 @@ static int init_hooks(void)
 		target = offset + *rel32;   /* jump target absolute address */
 
 		for (enum hook_id id = 0; id < HOOKS_CNT; id++) {
-			if (target == (unsigned long)hooks[id].target) {
-				printk("found target for hook_id=%d\n", id);
-				hooks[id].instr = instr;
-				hooks[id].rel32 = rel32;
-				hooks[id].rel_target = *rel32;
-				hooks[id].rel_trampoline =
-					(unsigned long)hooks[id].trampoline -
-					offset;
-			}
+			if (target != (unsigned long)hooks[id].target)
+				continue;
+
+			hooks[id].rel32 = rel32;
+			hooks[id].rel_target = *rel32;
+			hooks[id].rel_trampoline =
+				(unsigned long)hooks[id].trampoline - offset;
 		}
 	}
-
-	printk("finished hooks[] initialization\n");
 
 	return 0;
 }
 
 static int enable_hooks(void)
 {
+	enum hook_id id;
 	int err;
 
-	for (enum hook_id id = 0; id < HOOKS_CNT; id++) {
-		if (hooks[id].rel32) {
-			err = ktext_write(hooks[id].rel32,
-					  &hooks[id].rel_trampoline,
-					  sizeof(hooks[id].rel_trampoline));
+	for (id = 0; id < HOOKS_CNT; id++) {
+		if (!hooks[id].rel32) {
+			if (hooks[id].target)
+				pr_warn("failed to find call/jmp for %s, "
+					"skipping\n",
+					hooks[id].symbol);
 
-			if (!err)
-				printk("hook_id=%d hooked!\n", id);
-			else
-				pr_err("ktext_write() failed: %pe\n",
-				       ERR_PTR(err));
+			continue;
 		}
+
+		err = ktext_write(hooks[id].rel32, &hooks[id].rel_trampoline,
+				  sizeof hooks[id].rel_trampoline);
+
+		if (err) {
+			pr_err("ktext_write() failed: %pe\n", ERR_PTR(err));
+			return err;
+		}
+
+		printk("%s hooked!\n", hooks[id].symbol);
 	}
 
 	return 0;
@@ -158,19 +165,15 @@ static int enable_hooks(void)
 
 static void disable_hooks(void)
 {
-	int err;
+	enum hook_id id;
 
-	for (enum hook_id id = 0; id < HOOKS_CNT; id++) {
-		if (hooks[id].rel32) {
-			ktext_write(hooks[id].rel32, &hooks[id].rel_target,
-				    sizeof(hooks[id].rel_target));
+	for (id = 0; id < HOOKS_CNT; id++) {
+		if (!hooks[id].rel32)
+			continue;
 
-			if (!err)
-				printk("hook_id=%d unhooked!\n", id);
-			else
-				pr_err("ktext_write() failed: %pe\n",
-				       ERR_PTR(err));
-		}
+		ktext_write(hooks[id].rel32, &hooks[id].rel_target,
+			    sizeof(hooks[id].rel_target));
+		printk("%s unhooked!\n", hooks[id].symbol);
 	}
 }
 

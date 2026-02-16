@@ -2,7 +2,7 @@ obj-m += sugar.o
 sugar-objs += kmod.o
 #ccflags-y := -I$(src)/../../include
 
-all:
+build:
 	$(MAKE) -j$(shell nproc) -C /lib/modules/$(shell uname -r)/build M=$(PWD) \
 		modules
 
