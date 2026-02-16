@@ -1,11 +1,15 @@
 #include "irq.h"
 #include "data.h"
 #include "latte.h"
+
 #include <asm/nmi.h>
+#include <linux/nmi.h>
 
 static int latte_nmi_handler(unsigned int val, struct pt_regs *regs)
 {
-	pr_emerg("got an NMI from latte device!!\n");
+	nmi_panic(
+		regs,
+		"SYSTEM INTEGRITY VIOLATION: kernel code tampering detected\n");
 	return NMI_HANDLED;
 }
 
