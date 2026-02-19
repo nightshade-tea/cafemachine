@@ -6,7 +6,6 @@ libcrypto_dep = dependency('libcrypto', required: true)
      'latte_device.c',
      'mmio.c',
      'irq.c',
-     'dma.c',
      'mon.c',
      'dump.c'
      ),

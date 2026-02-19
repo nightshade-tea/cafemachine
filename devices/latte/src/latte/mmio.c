@@ -1,5 +1,4 @@
 #include "mmio.h"
-#include "dma.h"
 #include "irq.h"
 #include "latte_log.h"
 #include "mon.h"
@@ -17,9 +16,6 @@
 /* handler for all device operations triggered by writing to LATTE_CMD */
 static void latte_cmd(LatteState *dev)
 {
-
-    /* driver must wait for the DMA_BUF_AVAILABLE interrupt to use the dma
-     * buffer again. */
 
     latte_log("got %s command\n", latte_ops_str(dev->reg[LATTE_CMD]));
 
