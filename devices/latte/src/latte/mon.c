@@ -145,6 +145,11 @@ void *mon_thread(void *pci_dev)
         struct mem_region *mr = NULL;
 
         sleep(LATTE_SURVEILLANCE_RATE); // maracutaia
+
+        if (LIST_EMPTY(&surveillance_list)) {
+            continue;
+        }
+
         latte_log("surveillance round starting...\n");
 
         LIST_FOREACH (mr, &surveillance_list, regions) {
