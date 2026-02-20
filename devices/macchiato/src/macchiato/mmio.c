@@ -97,19 +97,27 @@ static void macchiato_mem_write(void *opaque, hwaddr addr, uint64_t data,
 
 void macchiato_mmio_init(MacchiatoState *dev, Error **errp)
 {
-    memory_region_init_io(&dev->bar[0], OBJECT(dev), &macchiato_reg_ops, dev,
-                          MACCHIATO_MMIO_BAR0_NAME, MACCHIATO_MMIO_BAR0_SIZE);
+    memory_region_init_io(&dev->bar[MACCHIATO_BAR_ID_CTL], OBJECT(dev),
+                          &macchiato_reg_ops, dev, MACCHIATO_MMIO_BAR0_NAME,
+                          MACCHIATO_MMIO_BAR0_SIZE);
 
-    pci_register_bar(&dev->pci_dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY,
-                     &dev->bar[0]);
+    pci_register_bar(&dev->pci_dev, MACCHIATO_BAR_ID_CTL,
+                     PCI_BASE_ADDRESS_SPACE_MEMORY,
+                     &dev->bar[MACCHIATO_BAR_ID_CTL]);
 
-    memory_region_init_ram(&dev->bar[1], OBJECT(dev), &macchiato_mem_ops, dev,
-                           MACCHIATO_MMIO_BAR1_NAME, MACCHIATO_MMIO_BAR1_SIZE);
+    memory_region_init_ram(&dev->bar[MACCHIATO_BAR_ID_TRANSFER], OBJECT(dev),
+                           MACCHIATO_MMIO_BAR1_NAME, MACCHIATO_MMIO_BAR1_SIZE,
+                           errp);
 
-    pci_register_bar(&dev->pci_dev, 1, PCI_BASE_ADDRESS_SPACE_MEMORY,
-                     &dev->bar[1])
+    pci_register_bar(&dev->pci_dev, MACCHIATO_BAR_ID_TRANSFER,
+                     PCI_BASE_ADDRESS_SPACE_MEMORY,
+                     &dev->bar[MACCHIATO_BAR_ID_TRANSFER])
 
-        macchiato_log("mmio initialized\n");
+        // retrieve pointer to the ram
+        dev->ram =
+        memory_region_get_ram_ptr(&dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
+
+    macchiato_log("mmio initialized\n");
 }
 
 const MemoryRegionOps macchiato_reg_ops = {

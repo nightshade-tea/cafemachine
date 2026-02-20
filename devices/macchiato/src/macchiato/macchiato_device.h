@@ -30,9 +30,9 @@ typedef struct MacchiatoState {
     PCIDevice pci_dev; /* inherit */
 
     /* mmio */
-    MemoryRegion bar[BAR_CNT];
+    MemoryRegion bar[MACCHIATO_BAR_ID_CNT];
     uint64_t reg[MACCHIATO_REG_CNT];
-    uint8_t mem[MACCHIATO_MMIO_BAR1_SIZE];
+    uint8_t *ram;
 
     /* raised interrupts vector */
     bool irq[MACCHIATO_IRQ_MAX_VECTORS];
