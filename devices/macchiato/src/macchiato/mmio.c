@@ -63,38 +63,6 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     dev->reg[idx] = data;
 }
 
-static uint64_t macchiato_mem_read(void *opaque, hwaddr addr, unsigned size)
-{
-    MacchiatoState *dev = opaque;
-    unsigned int idx;
-
-    if (addr >= MACCHIATO_MMIO_BAR1_SIZE) {
-        macchiato_log("got invalid mmio read: addr=%#" PRIx64 "\n", addr);
-        return 0;
-    }
-
-    uint64_t ret = 0;
-    memcpy(&ret, dev->mem + addr, size);
-
-    return ret;
-}
-
-static void macchiato_mem_write(void *opaque, hwaddr addr, uint64_t data,
-                                unsigned size)
-{
-    MacchiatoState *dev = opaque;
-    unsigned int idx;
-
-    if (addr >= MACCHIATO_MMIO_BAR1_SIZE ||
-        addr + size >= MACCHIATO_MMIO_BAR1_SIZE) {
-        macchiato_log("got invalid mmio write: addr=%#" PRIx64 " size=%u\n",
-                      addr, size);
-        return 0;
-    }
-
-    memcpy(dev->mem + addr, &data, size);
-}
-
 void macchiato_mmio_init(MacchiatoState *dev, Error **errp)
 {
     memory_region_init_io(&dev->bar[MACCHIATO_BAR_ID_CTL], OBJECT(dev),
@@ -133,21 +101,5 @@ const MemoryRegionOps macchiato_reg_ops = {
         {
             .min_access_size = MACCHIATO_MMIO_BAR0_MIN_ACCESS_SIZE,
             .max_access_size = MACCHIATO_MMIO_BAR0_MAX_ACCESS_SIZE,
-        },
-};
-
-const MemoryRegionOps macchiato_mem_ops = {
-    .read = macchiato_mem_read,
-    .write = macchiato_mem_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
-    .valid =
-        {
-            .min_access_size = MACCHIATO_MMIO_BAR1_MIN_ACCESS_SIZE,
-            .max_access_size = MACCHIATO_MMIO_BAR1_MAX_ACCESS_SIZE,
-        },
-    .impl =
-        {
-            .min_access_size = MACCHIATO_MMIO_BAR1_MIN_ACCESS_SIZE,
-            .max_access_size = MACCHIATO_MMIO_BAR1_MAX_ACCESS_SIZE,
         },
 };
