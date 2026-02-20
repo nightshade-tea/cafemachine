@@ -12,7 +12,7 @@ enum macchiato_bar_id {
     MACCHIATO_BAR_ID_CTL,
     MACCHIATO_BAR_ID_TRANSFER,
     MACCHIATO_BAR_ID_CNT
-}
+};
 
 /* BAR 0 -> device control registers */
 #define MACCHIATO_MMIO_BAR0_NAME "macchiato-mmio-ctl"
