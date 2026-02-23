@@ -1,6 +1,7 @@
 #include "irq.h"
 #include "data.h"
 #include "macchiato.h"
+#include "mmio.h"
 
 static irqreturn_t sync_handler(int irq, void *opaque)
 {
@@ -11,7 +12,7 @@ static irqreturn_t sync_handler(int irq, void *opaque)
 	data = pci_get_drvdata(pdev);
 
 	complete(&data->sync);
-	macchiato_reg_write(pdev, MACCHIATO_LOWER_INT, MACCHIATO_IRQ_SYNC);
+	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_SYNC);
 
 	return IRQ_HANDLED;
 }

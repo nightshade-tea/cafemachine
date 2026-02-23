@@ -115,7 +115,7 @@ static int __init macchiato_init(void)
 {
 	int err;
 
-	pr_info(dev, "macchiato_init()...");
+	pr_info("macchiato_init()...");
 
 	if ((err = pci_register_driver(&macchiato_pci_driver))) {
 		pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
@@ -134,7 +134,7 @@ err_exit:
 /* driver deinitialization */
 static void macchiato_exit(void)
 {
-	pr_info(dev, "macchiato_exit()...");
+	pr_info("macchiato_exit()...");
 	pci_unregister_driver(&macchiato_pci_driver);
 	pr_cont(" ok.\n");
 }
