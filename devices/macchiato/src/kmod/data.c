@@ -1,9 +1,9 @@
 #include "data.h"
-#include "latte.h"
+#include "macchiato.h"
 
-struct latte_dev_data *latte_dev_data_alloc(void)
+struct macchiato_dev_data *macchiato_dev_data_alloc(void)
 {
-	struct latte_dev_data *data;
+	struct macchiato_dev_data *data;
 
 	if (!(data = kzalloc(sizeof data, GFP_KERNEL)))
 		return NULL;
@@ -13,7 +13,7 @@ struct latte_dev_data *latte_dev_data_alloc(void)
 	return data;
 }
 
-void latte_dev_data_free(struct latte_dev_data *data)
+void macchiato_dev_data_free(struct macchiato_dev_data *data)
 {
 	kfree(data);
 }
