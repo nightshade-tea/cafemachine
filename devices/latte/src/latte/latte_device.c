@@ -40,9 +40,15 @@ static void latte_realize(PCIDevice *pci_dev, Error **errp)
     wmask &= ~PCI_COMMAND_MASTER;
     pci_set_word(pci_dev->wmask + PCI_COMMAND, wmask);
 
+    pthread_mutex_lock(&lock);
     if ((err = pthread_create(&latte_thread, NULL, mon_thread, dev))) {
         latte_log("failed to create monitor thread: %s\n", strerror(err));
     }
+
+    while (!ready_to_surveil) {
+        latte_log("preso\n");
+    }
+    pthread_mutex_unlock(&lock);
 
     latte_log("device realized\n");
 }

@@ -2,10 +2,13 @@
 #include "irq.h"
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
+#include <pthread.h>
 #include <stdio.h>
 
 mem_region_list surveillance_list;
 EVP_MD_CTX *mdctx;
+pthread_mutex_t lock;
+uint8_t ready_to_surveil;
 
 static unsigned char *hash_buffer(char *buf, hwaddr len)
 {
@@ -33,11 +36,6 @@ static unsigned char *hash_buffer(char *buf, hwaddr len)
         latte_log("failed to retrieve hash.\n");
         goto error;
     }
-
-    /* for (unsigned int i = 0; i < hash_len; i++) {
-      qemu_log("%02x", hash[i]);
-    }
-    qemu_log("\n"); */
 
     return hash;
 error:
@@ -72,17 +70,18 @@ int put_under_surveillance(hwaddr start_addr, hwaddr end_addr)
         return errno;
     }
 
+    pthread_mutex_lock(&lock);
     LIST_INSERT_HEAD(&surveillance_list, mr, regions);
+    pthread_mutex_unlock(&lock);
 
     return 0;
 }
 
-/*
-static void mock_addr() {
-  // put_under_surveillance(0x8000, 0x18000);
-  put_under_surveillance(0x1000, 0x2000);
+static void mock_addr(void)
+{
+    // put_under_surveillance(0x8000, 0x18000);
+    put_under_surveillance(0x1000, 0x2000);
 }
-*/
 
 static void surveil(LatteState *dev, struct mem_region *mr)
 {
@@ -130,9 +129,12 @@ free_buf:
 
 void *mon_thread(void *pci_dev)
 {
-    LatteState *dev = LATTE_DEVICE(pci_dev);
-    LIST_INIT(&surveillance_list); // race condition maybe
+    LIST_INIT(&surveillance_list);
+    ready_to_surveil = 1;
 
+    LatteState *dev = LATTE_DEVICE(pci_dev);
+
+    mock_addr();
     mdctx = EVP_MD_CTX_new();
     if (!mdctx) {
         latte_log("failed to get new message digest for hashing\n");
@@ -155,7 +157,6 @@ void *mon_thread(void *pci_dev)
         LIST_FOREACH (mr, &surveillance_list, regions) {
             surveil(dev, mr);
             if (mr->status == LATTE_MR_STATUS_CORRUPTED) {
-                // TODO raise nmi
                 latte_nmi_raise(dev, 0);
                 latte_nmi_raise(dev, 0); // first is dropped
                 latte_log("memory region [%#" HWADDR_PRIx " - %#" HWADDR_PRIx

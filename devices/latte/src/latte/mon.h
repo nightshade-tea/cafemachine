@@ -24,6 +24,9 @@ struct mem_region {
     LIST_ENTRY(mem_region) regions;
 };
 
+extern pthread_mutex_t lock;
+extern uint8_t ready_to_surveil;
+
 typedef LIST_HEAD(mem_region_list, mem_region) mem_region_list;
 
 int put_under_surveillance(hwaddr start_addr, hwaddr end_addr);
