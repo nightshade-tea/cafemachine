@@ -77,12 +77,6 @@ int put_under_surveillance(hwaddr start_addr, hwaddr end_addr)
     return 0;
 }
 
-static void mock_addr(void)
-{
-    // put_under_surveillance(0x8000, 0x18000);
-    put_under_surveillance(0x1000, 0x2000);
-}
-
 static void surveil(LatteState *dev, struct mem_region *mr)
 {
     unsigned char *hash;
@@ -134,7 +128,6 @@ void *mon_thread(void *pci_dev)
 
     LatteState *dev = LATTE_DEVICE(pci_dev);
 
-    mock_addr();
     mdctx = EVP_MD_CTX_new();
     if (!mdctx) {
         latte_log("failed to get new message digest for hashing\n");
