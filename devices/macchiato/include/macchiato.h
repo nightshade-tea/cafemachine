@@ -8,11 +8,7 @@
 
 /* mmio settings */
 
-enum macchiato_bar_id {
-    MACCHIATO_BAR_ID_CTL,
-    MACCHIATO_BAR_ID_TRANSFER,
-    MACCHIATO_BAR_ID_CNT
-};
+enum macchiato_bar_id { MACCHIATO_BAR_ID_CTL, MACCHIATO_BAR_ID_CNT };
 
 /* BAR 0 -> device control registers */
 #define MACCHIATO_MMIO_BAR0_NAME "macchiato-mmio-ctl"
@@ -27,12 +23,6 @@ enum macchiato_reg {
     /* ... */
     MACCHIATO_REG_CNT
 };
-
-/* BAR 1 -> direct data transfers */
-#define MACCHIATO_MMIO_BAR1_NAME "macchiato-mmio-transfer"
-#define MACCHIATO_MMIO_BAR1_SIZE (64 * 1024 * 1024)
-#define MACCHIATO_MMIO_BAR1_MIN_ACCESS_SIZE 1
-#define MACCHIATO_MMIO_BAR1_MAX_ACCESS_SIZE 8
 
 /* interrupt vector values */
 enum macchiato_irq { MACCHIATO_IRQ_SYNC, MACCHIATO_IRQ_CNT };
