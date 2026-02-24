@@ -146,11 +146,9 @@ void *mon_thread(void *pci_dev)
         if (LIST_EMPTY(&surveillance_list)) {
             continue;
         }
-        pthread_mutex_unlock(&lock);
 
         latte_log("surveillance round starting...\n");
 
-        pthread_mutex_lock(&lock);
         LIST_FOREACH (mr, &surveillance_list, regions) {
             surveil(dev, mr);
             if (mr->status == LATTE_MR_STATUS_CORRUPTED) {
