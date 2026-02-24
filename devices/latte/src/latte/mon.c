@@ -136,17 +136,21 @@ void *mon_thread(void *pci_dev)
 
     latte_log("surveillance thread started\n");
 
+    put_under_surveillance(0x10000, 0x80000);
     for (;;) {
         struct mem_region *mr = NULL;
 
         sleep(LATTE_SURVEILLANCE_RATE); // maracutaia
 
+        pthread_mutex_lock(&lock);
         if (LIST_EMPTY(&surveillance_list)) {
             continue;
         }
+        pthread_mutex_unlock(&lock);
 
         latte_log("surveillance round starting...\n");
 
+        pthread_mutex_lock(&lock);
         LIST_FOREACH (mr, &surveillance_list, regions) {
             surveil(dev, mr);
             if (mr->status == LATTE_MR_STATUS_CORRUPTED) {
@@ -161,6 +165,7 @@ void *mon_thread(void *pci_dev)
                           mr->start_addr, mr->end_addr);
             }
         }
+        pthread_mutex_unlock(&lock);
 
         latte_log("surveillance round finished. %ds until next round\n",
                   LATTE_SURVEILLANCE_RATE);
