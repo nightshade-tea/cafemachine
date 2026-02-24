@@ -85,7 +85,14 @@ void macchiato_mmio_init(MacchiatoState *dev, Error **errp)
         dev->ram =
         memory_region_get_ram_ptr(&dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
 
-    macchiato_log("mmio initialized\n");
+    memory_region_init(&dev->bar[MACCHIATO_BAR_ID_MSIX], OBJECT(dev),
+                       MACCHIATO_MMIO_BAR2_NAME, MACCHIATO_MMIO_BAR2_SIZE);
+
+    pci_register_bar(&dev->pci_dev,
+                     MACCHIATO_BAR_ID_MSIX PCI_BASE_ADDRESS_SPACE_MEMORY,
+                     &dev->bar[MACCHIATO_BAR_ID_MSIX])
+
+        macchiato_log("mmio initialized\n");
 }
 
 const MemoryRegionOps macchiato_reg_ops = {
