@@ -42,6 +42,12 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_pci_enable_device;
 	}
 
+	if ((err = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64)))) {
+		dev_err(dev, "dma_set_mask_and_coherent(mask=64) failed: %pe\n",
+			ERR_PTR(err));
+		goto err_dma_set_mask_and_coherent;
+	}
+
 	/* enable bus mastering for dma and msi */
 	pci_set_master(pdev);
 
@@ -67,6 +73,7 @@ err_macchiato_irq_enable:
 	macchiato_mmio_disable(pdev);
 
 err_macchiato_mmio_enable:
+err_dma_set_mask_and_coherent:
 	pci_disable_device(pdev);
 
 err_pci_enable_device:
