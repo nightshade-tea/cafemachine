@@ -1,12 +1,12 @@
 #include "macchiato_device.h"
+#include "irq.h"
+#include "macchiato_log.h"
+#include "mmio.h"
 
 /* instantiate a macchiato device object (MacchiatoState) */
 static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 {
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
-    uint16_t cmd, wmask, cmask;
-    pthread_t macchiato_thread;
-    int err;
 
     /* set pci express capability on pci configuration space */
     if (pci_bus_is_express(pci_get_bus(pci_dev)) &&

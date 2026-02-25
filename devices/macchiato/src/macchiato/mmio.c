@@ -4,16 +4,15 @@
 static void macchiato_cmd(MacchiatoState *dev)
 {
 
-    macchiato_log("got %s command\n",
-                  macchiato_ops_str(dev->reg[MACCHIATO_CMD]));
+    macchiato_log("got %#" PRIx64 " command\n", dev->reg[MACCHIATO_REG_CMD]);
 
-    switch (dev->reg[MACCHIATO_CMD]) {
+    switch (dev->reg[MACCHIATO_REG_CMD]) {
     default:
         break;
     }
 
     /* reset MACCHIATO_CMD after handling */
-    dev->reg[MACCHIATO_CMD] = MACCHIATO_NOP;
+    dev->reg[MACCHIATO_REG_CMD] = MACCHIATO_NOP;
 }
 
 static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
@@ -21,14 +20,14 @@ static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_MMIO_ACCESS_SIZE) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_MMIO_BAR0_SIZE) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio read: addr=%#" PRIx64 " idx=%u\n", addr,
                       idx);
         return 0;
     }
 
-    macchiato_log("got mmio read at register %s -> %#" PRIx64 "\n",
-                  macchiato_reg_str(idx), dev->reg[idx]);
+    macchiato_log("got mmio read at register %u -> %#" PRIx64 "\n", idx,
+                  dev->reg[idx]);
 
     return dev->reg[idx];
 }
@@ -39,23 +38,22 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_MMIO_ACCESS_SIZE) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_MMIO_BAR0_SIZE) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio write: addr=%#" PRIx64 " idx=%u\n",
                       addr, idx);
         return;
     }
 
-    macchiato_log("got mmio write at register %s <- %#" PRIx64 "\n",
-                  macchiato_reg_str(idx), data);
+    macchiato_log("got mmio write at register %u <- %#" PRIx64 "\n", idx, data);
 
     /* special cases */
     switch (idx) {
-    case MACCHIATO_CMD:
-        dev->reg[MACCHIATO_CMD] = data;
+    case MACCHIATO_REG_CMD:
+        dev->reg[MACCHIATO_REG_CMD] = data;
         macchiato_cmd(dev);
         return;
 
-    case MACCHIATO_LOWER_INT:
+    case MACCHIATO_REG_LOWER_IRQ:
         macchiato_irq_lower(dev, data);
         return;
     }
@@ -79,20 +77,12 @@ void macchiato_mmio_init(MacchiatoState *dev, Error **errp)
 
     pci_register_bar(&dev->pci_dev, MACCHIATO_BAR_ID_TRANSFER,
                      PCI_BASE_ADDRESS_SPACE_MEMORY,
-                     &dev->bar[MACCHIATO_BAR_ID_TRANSFER])
+                     &dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
 
-        // retrieve pointer to the ram
-        dev->ram =
-        memory_region_get_ram_ptr(&dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
+    // retrieve pointer to the ram
+    dev->ram = memory_region_get_ram_ptr(&dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
 
-    memory_region_init(&dev->bar[MACCHIATO_BAR_ID_MSIX], OBJECT(dev),
-                       MACCHIATO_MMIO_BAR2_NAME, MACCHIATO_MMIO_BAR2_SIZE);
-
-    pci_register_bar(&dev->pci_dev,
-                     MACCHIATO_BAR_ID_MSIX PCI_BASE_ADDRESS_SPACE_MEMORY,
-                     &dev->bar[MACCHIATO_BAR_ID_MSIX])
-
-        macchiato_log("mmio initialized\n");
+    macchiato_log("mmio initialized\n");
 }
 
 const MemoryRegionOps macchiato_reg_ops = {

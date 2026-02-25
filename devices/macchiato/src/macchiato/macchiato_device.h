@@ -1,18 +1,13 @@
 #ifndef MACCHIATO_DEVICE_H
 #define MACCHIATO_DEVICE_H
 
-#include <errno.h>
-#include <pthread.h>
-#include <string.h>
-
 #include "qemu/osdep.h"
 #include "hw/pci/msi.h"
 #include "hw/pci/pci.h"
-
-#include "irq.h"
 #include "macchiato.h"
-#include "macchiato_log.h"
-#include "mmio.h"
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
 
 #define TYPE_MACCHIATO_DEVICE MACCHIATO_HW_NAME
 
@@ -35,7 +30,7 @@ typedef struct MacchiatoState {
     uint8_t *ram;
 
     /* raised interrupts vector */
-    bool irq[MACCHIATO_IRQ_MAX_VECTORS];
+    bool irq[MACCHIATO_IRQ_CNT];
 
 } MacchiatoState;
 

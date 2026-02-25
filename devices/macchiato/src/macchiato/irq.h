@@ -2,8 +2,11 @@
 #define MACCHIATO_IRQ_H
 
 #include "qemu/osdep.h"
+#include "hw/pci/msix.h"
 #include "hw/pci/pci.h"
+#include "macchiato.h"
 #include "macchiato_device.h"
+#include "macchiato_log.h"
 
 void macchiato_irq_init(MacchiatoState *dev, Error **errp);
 

@@ -33,16 +33,13 @@ enum macchiato_reg {
 #define MACCHIATO_MMIO_BAR1_NAME "macchiato-mmio-transfer"
 #define MACCHIATO_MMIO_BAR1_SIZE (64 * 1024 * 1024)
 
-/* BAR 2 -> msix */
-#define MACCHIATO_MMIO_BAR2_NAME "macchiato-msix"
-#define MACCHIATO_MMIO_BAR2_SIZE 4096
-
 /* interrupt vector values */
 enum macchiato_irq { MACCHIATO_IRQ_SYNC, MACCHIATO_IRQ_CNT };
 
 /* device operations (values for MACCHIATO_CMD register) */
 enum macchiato_op {
     /* register rules, scan file(s) ... */
+    MACCHIATO_NOP,
     MACCHIATO_OP_CNT
 };
 
