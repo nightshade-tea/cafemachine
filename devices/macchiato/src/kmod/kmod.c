@@ -26,7 +26,7 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	dev = &pdev->dev;
 
-	dev_info(dev, "macchiato_probe()...");
+	pr_info("macchiato_probe()...");
 
 	if (!(data = macchiato_dev_data_alloc())) {
 		err = -ENOMEM;
@@ -110,7 +110,7 @@ static void macchiato_remove(struct pci_dev *pdev)
 	struct device *dev;
 
 	dev = &pdev->dev;
-	dev_info(dev, "macchiato_remove()...");
+	pr_info("macchiato_remove()...");
 
 	macchiato_chardev_delete(pdev);
 	macchiato_irq_disable(pdev);

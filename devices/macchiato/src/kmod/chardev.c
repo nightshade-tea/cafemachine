@@ -56,7 +56,8 @@ int macchiato_chardev_create(struct pci_dev *pdev)
 
 	/* create the device file in /dev */
 	if (IS_ERR(errp = device_create(class, dev, data->devt, NULL,
-					MACCHIATO_HW_NAME))) {
+					MACCHIATO_HW_NAME "%d",
+					MINOR(data->devt)))) {
 		dev_err(dev, "device_create() failed: %pe\n", errp);
 		err = PTR_ERR(errp);
 		goto err_device_create;
