@@ -1,5 +1,5 @@
 obj-m += macchiato.o
-macchiato-objs += kmod.o data.o mmio.o irq.o
+macchiato-objs += kmod.o data.o mmio.o irq.o chardev.o
 ccflags-y := -I$(src)/../../include
 
 .PHONY: build clean format

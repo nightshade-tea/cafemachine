@@ -1,4 +1,5 @@
 #include "kmod.h"
+#include "chardev.h"
 #include "data.h"
 #include "irq.h"
 #include "macchiato.h"
@@ -73,8 +74,17 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_macchiato_irq_enable;
 	}
 
+	if ((err = macchiato_chardev_create(pdev))) {
+		dev_err(dev, "macchiato_chardev_create() failed: %pe\n",
+			ERR_PTR(err));
+		goto err_macchiato_chardev_create;
+	}
+
 	pr_cont(" ok.\n");
 	return 0;
+
+err_macchiato_chardev_create:
+	macchiato_irq_disable(pdev);
 
 err_macchiato_irq_enable:
 	macchiato_mmio_disable(pdev);
@@ -102,6 +112,7 @@ static void macchiato_remove(struct pci_dev *pdev)
 	dev = &pdev->dev;
 	dev_info(dev, "macchiato_remove()...");
 
+	macchiato_chardev_delete(pdev);
 	macchiato_irq_disable(pdev);
 
 	/* drivers should call pci_release_region() after calling
@@ -132,15 +143,23 @@ static int __init macchiato_init(void)
 
 	pr_info("macchiato_init()...");
 
+	if ((err = macchiato_chardev_init())) {
+		pr_err("macchiato_chardev_init() failed: %pe\n", ERR_PTR(err));
+		goto err_macchiato_chardev_init;
+	}
+
 	if ((err = pci_register_driver(&macchiato_pci_driver))) {
 		pr_err("pci_register_driver() failed: %pe\n", ERR_PTR(err));
-		goto err_exit;
+		goto err_pci_register_driver;
 	}
 
 	pr_cont(" ok.\n");
 	return 0;
 
-err_exit:
+err_pci_register_driver:
+	macchiato_chardev_deinit();
+
+err_macchiato_chardev_init:
 
 	pr_err("macchiato_init() failed: %pe\n", ERR_PTR(err));
 	return err;
@@ -151,6 +170,7 @@ static void macchiato_exit(void)
 {
 	pr_info("macchiato_exit()...");
 	pci_unregister_driver(&macchiato_pci_driver);
+	macchiato_chardev_deinit();
 	pr_cont(" ok.\n");
 }
 
