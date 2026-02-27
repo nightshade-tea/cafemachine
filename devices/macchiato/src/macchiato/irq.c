@@ -44,6 +44,8 @@ void macchiato_irq_lower(MacchiatoState *dev, unsigned int vector)
     }
 
     dev->irq[vector] = false;
+    msix_clr_pending(&dev->pci_dev, vector);
+
     macchiato_log("irq %u lowered\n", vector);
 }
 
