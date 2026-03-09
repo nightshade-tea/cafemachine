@@ -5,44 +5,80 @@
 #define MACCHIATO_HW_NAME "macchiato"
 #define MACCHIATO_VENDOR_ID 0x1ced
 #define MACCHIATO_DEVICE_ID 0x4acc
-#define MACCHIATO_INTERNAL_BUFFER (64 * 1024 * 1024)
+#define MACCHIATO_INTERNAL_BUFFER (64 * 1024 * 1024) /* dma buf */
 
 /* mmio settings */
 enum macchiato_bar_id {
-    MACCHIATO_BAR_ID_CTL,
-    MACCHIATO_BAR_ID_MSIX,
+    MACCHIATO_BAR_ID_CTL,  /* control registers */
+    MACCHIATO_BAR_ID_MSIX, /* msix table */
 
     MACCHIATO_BAR_ID_CNT
 };
 
 /* MACCHIATO_BAR_ID_CTL registers */
 enum macchiato_reg {
-    MACCHIATO_REG_CMD,
-    MACCHIATO_REG_LOWER_IRQ,
-    /* ... */
+    MACCHIATO_REG_CMD,       /* In */
+    MACCHIATO_REG_LOWER_IRQ, /* In */
+    MACCHIATO_REG_ADDR,      /* In */
+    MACCHIATO_REG_SIZE,      /* In/Out */
+    MACCHIATO_REG_STATUS,    /* Out */
 
     MACCHIATO_REG_CNT
 };
 
 /* interrupt vector values */
 enum macchiato_irq {
-    MACCHIATO_IRQ_COMPILER_OK,
-    MACCHIATO_IRQ_COMPILER_ERR,
-    MACCHIATO_IRQ_SCANNER_MATCH,
-    MACCHIATO_IRQ_CONTINUE, /* MACCHIATO_OP_SCAN_BUFFER succeeded, continue */
+    MACCHIATO_IRQ_DONE,   /* no error */
+    MACCHIATO_IRQ_FAILED, /* error, check status register */
+    MACCHIATO_IRQ_NEXT_BLOCK,
+    MACCHIATO_IRQ_FIRST_BLOCK,
 
     MACCHIATO_IRQ_CNT
 };
 
 /* device operations (values for MACCHIATO_CMD register) */
 enum macchiato_op {
-    MACCHIATO_OP_RESET_COMPILER,      /* yr_compiler_create() */
-    MACCHIATO_OP_COMPILER_ADD_STRING, /* yr_compiler_add_string() */
+    /* reset yara compiler internal state, reset rules
+     *
+     * no args. */
+    MACCHIATO_OP_RESET_COMPILER,
 
-    MACCHIATO_OP_RESET_SCANNER, /* yr_scanner_create() */
-    MACCHIATO_OP_SCAN_BUFFER,   /* yr_rules_scan_mem() */
+    /* reset yara scanner internal state, reset results data
+     *
+     * no args. */
+    MACCHIATO_OP_RESET_SCANNER,
+
+    /* add rule
+     *
+     * in: addr, size
+     * out: status */
+    MACCHIATO_OP_ADD_RULE,
+
+    /* scan user buffer
+     *
+     * in: addr, size
+     * out: status, size
+     *
+     * obs: size of serialized results is written to size */
+    MACCHIATO_OP_SCAN_BUFFER,
+
+    /* write serialized results to user buffer
+     *
+     * in: addr, size
+     * out: status */
+    MACCHIATO_OP_GET_RESULTS,
 
     MACCHIATO_OP_CNT
 };
+
+/* correct order of operations:
+ *
+ * RESET_COMPILER :: once
+ * RESET_SCANNER  :: once
+ * ADD_RULES      :: n times
+ * SCAN_BUFFER    :: n times
+ * GET_RESULTS    :: once
+ *
+ */
 
 #endif /* MACCHIATO_H */
