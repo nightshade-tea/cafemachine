@@ -3,6 +3,7 @@
 #include "macchiato.h"
 #include "mmio.h"
 
+/* TODO update this */
 static irqreturn_t sync_handler(int irq, void *opaque)
 {
 	struct pci_dev *pdev;
@@ -12,13 +13,17 @@ static irqreturn_t sync_handler(int irq, void *opaque)
 	data = pci_get_drvdata(pdev);
 
 	complete(&data->sync);
-	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_SYNC);
+	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_DONE);
 
 	return IRQ_HANDLED;
 }
 
+/* TODO update this */
 static const irq_handler_t handlers[MACCHIATO_IRQ_CNT] = {
-	[MACCHIATO_IRQ_SYNC] = sync_handler,
+	[MACCHIATO_IRQ_DONE] = sync_handler,
+	[MACCHIATO_IRQ_FAILED] = sync_handler,
+	[MACCHIATO_IRQ_NEXT_BLOCK] = sync_handler,
+	[MACCHIATO_IRQ_FIRST_BLOCK] = sync_handler,
 };
 
 int macchiato_irq_enable(struct pci_dev *pdev)

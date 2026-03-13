@@ -2,6 +2,7 @@
 #include "data.h"
 #include "macchiato.h"
 #include <linux/cdev.h>
+#include <linux/fs.h>
 
 static struct class *class;
 static dev_t base_devt;
@@ -16,15 +17,46 @@ static inline struct pci_dev *minor_pdev(int minor)
 
 static int open(struct inode *inode, struct file *file)
 {
-	printk("macchiato open()!\n");
+	struct pci_dev *pdev;
+	struct macchiato_dev_data *data;
+
+	if (!(pdev = minor_pdev(iminor(inode))))
+		return -ENODEV;
+
+	data = pci_get_drvdata(pdev);
+
+	if (test_and_set_bit_lock(MACCHIATO_LOCK_FD, data->lock))
+		return -EBUSY;
+
+	file->private_data = data;
+
+	return nonseekable_open(inode, file);
+}
+
+static int release(struct inode *inode, struct file *file)
+{
+	struct macchiato_dev_data *data;
+
+	data = file->private_data;
+	clear_bit_unlock(MACCHIATO_LOCK_FD, data->lock);
+
 	return 0;
 }
+
+/* ioctl handlers */
+
+/* ioctl() */
+
+/* write() */
+
+/* read() */
 
 /* -------------------------------------------------------------------------- */
 
 static const struct file_operations f_ops = {
 	.owner = THIS_MODULE,
 	.open = open,
+	.release = release,
 };
 
 /* create a character device file for a macchiato device */
