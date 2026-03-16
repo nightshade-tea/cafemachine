@@ -15,6 +15,8 @@ static inline struct pci_dev *minor_pdev(int minor)
 
 /* -------------------------------------------------------------------------- */
 
+/* TODO check last_irq  */
+
 static int open(struct inode *inode, struct file *file)
 {
 	struct pci_dev *pdev;
@@ -43,13 +45,134 @@ static int release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-/* ioctl handlers */
+static long reset_compiler(struct macchiato_dev_data *data)
+{
+	writeq(MACCHIATO_OP_RESET_COMPILER,
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_CMD * 8);
 
-/* ioctl() */
+	wait_for_completion(&data->sync);
+	reinit_completion(&data->sync);
 
-/* write() */
+	return 0;
+}
 
-/* read() */
+static long reset_scanner(struct macchiato_dev_data *data)
+{
+	writeq(MACCHIATO_OP_RESET_SCANNER,
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_CMD * 8);
+
+	wait_for_completion(&data->sync);
+	reinit_completion(&data->sync);
+
+	return 0;
+}
+
+static long add_rule(struct macchiato_dev_data *data, unsigned long arg)
+{
+	struct macchiato_memory_region mr;
+
+	if (copy_from_user(&mr, (void __user *)arg, sizeof mr))
+		return -EFAULT;
+
+	/* probably wrong and unsafe way to use udmabuf, but since we dont have
+	 * an iommu...  */
+
+	writeq(virt_to_phys((void *)mr.addr),
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_ADDR * 8);
+	writeq(mr.size, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+				MACCHIATO_REG_SIZE * 8);
+	writeq(MACCHIATO_OP_ADD_RULE,
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_CMD * 8);
+
+	wait_for_completion(&data->sync);
+	reinit_completion(&data->sync);
+
+	return 0;
+}
+
+static long get_serialsz(struct macchiato_dev_data *data)
+{
+	return readq((char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		     MACCHIATO_REG_SIZE * 8);
+}
+
+static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct macchiato_dev_data *data;
+
+	data = file->private_data;
+
+	switch (cmd) {
+	case MACCHIATO_IOCTL_CMD_RESET_COMPILER:
+		return reset_compiler(data);
+
+	case MACCHIATO_IOCTL_CMD_RESET_SCANNER:
+		return reset_scanner(data);
+
+	case MACCHIATO_IOCTL_CMD_ADD_RULE:
+		return add_rule(data, arg);
+
+	case MACCHIATO_IOCTL_CMD_GET_SERIALSZ:
+		return get_serialsz(data);
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t write(struct file *file, const char __user *ubuf, size_t size,
+		     loff_t *off)
+{
+	struct macchiato_dev_data *data;
+
+	data = file->private_data;
+
+	writeq(virt_to_phys((void *)ubuf),
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_ADDR * 8);
+	writeq(size, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+			     MACCHIATO_REG_SIZE * 8);
+	writeq(MACCHIATO_OP_SCAN_BUFFER,
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_CMD * 8);
+
+	wait_for_completion(&data->sync);
+	reinit_completion(&data->sync);
+
+	if (data->last_irq == MACCHIATO_IRQ_FIRST_BLOCK)
+		return -EAGAIN;
+
+	return 0; /* MACCHIATO_IRQ_NEXT_BLOCK  */
+}
+
+static ssize_t read(struct file *file, char __user *ubuf, size_t size,
+		    loff_t *off)
+{
+	struct macchiato_dev_data *data;
+	unsigned long serialsz;
+
+	data = file->private_data;
+	serialsz = readq((char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+			 MACCHIATO_REG_SIZE * 8);
+
+	if (size < serialsz)
+		return -ENOSPC;
+
+	writeq(virt_to_phys((void *)ubuf),
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_ADDR * 8);
+	writeq(MACCHIATO_OP_GET_RESULTS,
+	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
+		       MACCHIATO_REG_CMD * 8);
+
+	wait_for_completion(&data->sync);
+	reinit_completion(&data->sync);
+
+	return 0;
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -57,6 +180,9 @@ static const struct file_operations f_ops = {
 	.owner = THIS_MODULE,
 	.open = open,
 	.release = release,
+	.unlocked_ioctl = ioctl,
+	.write = write,
+	.read = read,
 };
 
 /* create a character device file for a macchiato device */

@@ -81,4 +81,20 @@ enum macchiato_op {
  *
  */
 
+/* userspace interface  */
+enum macchiato_ioctl_cmd {
+    MACCHIATO_IOCTL_CMD_RESET_COMPILER,
+    MACCHIATO_IOCTL_CMD_RESET_SCANNER,
+    MACCHIATO_IOCTL_CMD_ADD_RULE,
+    MACCHIATO_IOCTL_CMD_GET_SERIALSZ,
+
+    MACCHIATO_IOCTL_CMD_CNT
+};
+
+/* arg for MACCHIATO_IOCTL_CMD_ADD_RULE  */
+struct macchiato_memory_region {
+    unsigned long addr;
+    unsigned long size;
+};
+
 #endif /* MACCHIATO_H */
