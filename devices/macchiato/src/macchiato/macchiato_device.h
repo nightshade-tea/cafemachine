@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <yara.h>
 
 #define TYPE_MACCHIATO_DEVICE MACCHIATO_HW_NAME
 
@@ -27,10 +28,16 @@ typedef struct MacchiatoState {
     /* mmio */
     MemoryRegion bar[MACCHIATO_BAR_ID_CNT];
     uint64_t reg[MACCHIATO_REG_CNT];
-    uint8_t *ram;
+
+    /* scan */
+    YR_COMPILER *compiler;
+    YR_RULES *rules;
+    YR_SCANNER *scanner;
 
     /* raised interrupts vector */
     bool irq[MACCHIATO_IRQ_CNT];
+
+    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER];
 
 } MacchiatoState;
 

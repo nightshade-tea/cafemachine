@@ -1,5 +1,10 @@
 #include "mmio.h"
 
+#define MACCHIATO_ACCESS_SIZE 8
+#define PAGE_SIZE 4096
+#define ROUND_UP_TO_PAGE(x) (((x) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+#define MACCHIATO_BAR_CTL_SZ ROUND_UP_TO_PAGE(MACCHIATO_REG_CNT * 8)
+
 /* handler for all device operations triggered by writing to MACCHIATO_CMD */
 static void macchiato_cmd(MacchiatoState *dev)
 {
@@ -10,9 +15,6 @@ static void macchiato_cmd(MacchiatoState *dev)
     default:
         break;
     }
-
-    /* reset MACCHIATO_CMD after handling */
-    dev->reg[MACCHIATO_REG_CMD] = MACCHIATO_NOP;
 }
 
 static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
@@ -20,7 +22,7 @@ static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_MMIO_BAR0_SIZE) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_BAR_CTL_SZ) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio read: addr=%#" PRIx64 " idx=%u\n", addr,
                       idx);
         return 0;
@@ -38,7 +40,7 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_MMIO_BAR0_SIZE) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_BAR_CTL_SZ) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio write: addr=%#" PRIx64 " idx=%u\n",
                       addr, idx);
         return;
@@ -64,23 +66,12 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
 void macchiato_mmio_init(MacchiatoState *dev, Error **errp)
 {
     memory_region_init_io(&dev->bar[MACCHIATO_BAR_ID_CTL], OBJECT(dev),
-                          &macchiato_reg_ops, dev, MACCHIATO_MMIO_BAR0_NAME,
-                          MACCHIATO_MMIO_BAR0_SIZE);
+                          &macchiato_reg_ops, dev, "macchiato-bar-ctl",
+                          MACCHIATO_BAR_CTL_SZ);
 
     pci_register_bar(&dev->pci_dev, MACCHIATO_BAR_ID_CTL,
                      PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &dev->bar[MACCHIATO_BAR_ID_CTL]);
-
-    memory_region_init_ram(&dev->bar[MACCHIATO_BAR_ID_TRANSFER], OBJECT(dev),
-                           MACCHIATO_MMIO_BAR1_NAME, MACCHIATO_MMIO_BAR1_SIZE,
-                           errp);
-
-    pci_register_bar(&dev->pci_dev, MACCHIATO_BAR_ID_TRANSFER,
-                     PCI_BASE_ADDRESS_SPACE_MEMORY,
-                     &dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
-
-    // retrieve pointer to the ram
-    dev->ram = memory_region_get_ram_ptr(&dev->bar[MACCHIATO_BAR_ID_TRANSFER]);
 
     macchiato_log("mmio initialized\n");
 }
@@ -91,12 +82,12 @@ const MemoryRegionOps macchiato_reg_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
     .valid =
         {
-            .min_access_size = MACCHIATO_MMIO_BAR0_MIN_ACCESS_SIZE,
-            .max_access_size = MACCHIATO_MMIO_BAR0_MAX_ACCESS_SIZE,
+            .min_access_size = MACCHIATO_ACCESS_SIZE,
+            .max_access_size = MACCHIATO_ACCESS_SIZE,
         },
     .impl =
         {
-            .min_access_size = MACCHIATO_MMIO_BAR0_MIN_ACCESS_SIZE,
-            .max_access_size = MACCHIATO_MMIO_BAR0_MAX_ACCESS_SIZE,
+            .min_access_size = MACCHIATO_ACCESS_SIZE,
+            .max_access_size = MACCHIATO_ACCESS_SIZE,
         },
 };

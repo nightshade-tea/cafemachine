@@ -2,6 +2,7 @@
 #include "irq.h"
 #include "macchiato_log.h"
 #include "mmio.h"
+#include <yara.h>
 
 /* instantiate a macchiato device object (MacchiatoState) */
 static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
@@ -16,6 +17,10 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 
     macchiato_mmio_init(dev, errp);
     macchiato_irq_init(dev, errp);
+
+    if (yr_compiler_create(&dev->compiler)) {
+        macchiato_log("failed to create yara compiler\n");
+    }
 
     macchiato_log("device realized\n");
 }
@@ -32,6 +37,10 @@ static void macchiato_class_init(ObjectClass *klass, void *data)
     pci_device_class->device_id = MACCHIATO_DEVICE_ID;
     pci_device_class->class_id = PCI_CLASS_OTHERS;
     set_bit(DEVICE_CATEGORY_MISC, device_class->categories);
+
+    if (yr_initialize()) {
+        macchiato_log("failed to initialize yara\n");
+    }
 
     macchiato_log("class initialized\n");
 }

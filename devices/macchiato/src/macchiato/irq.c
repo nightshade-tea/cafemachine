@@ -6,7 +6,7 @@ void macchiato_irq_init(MacchiatoState *dev, Error **errp)
     int ret = msix_init_exclusive_bar(&dev->pci_dev, MACCHIATO_IRQ_CNT,
                                       MACCHIATO_BAR_ID_MSIX, errp);
 
-    if (!ret) {
+    if (ret) {
         macchiato_log("failed to initialize msix\n");
         return;
     }
