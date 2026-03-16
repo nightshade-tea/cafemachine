@@ -3,8 +3,10 @@
 #include "macchiato.h"
 #include "mmio.h"
 
-/* TODO update this */
-static irqreturn_t sync_handler(int irq, void *opaque)
+/* this sucks  */
+
+/* actual handler  */
+static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 {
 	struct pci_dev *pdev;
 	struct macchiato_dev_data *data;
@@ -12,18 +14,42 @@ static irqreturn_t sync_handler(int irq, void *opaque)
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
 
+	data->last_irq = hw_irqn;
 	complete(&data->sync);
 	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_DONE);
 
 	return IRQ_HANDLED;
 }
 
-/* TODO update this */
+/* dummy handlers just so we dont have to make a mapping of virtual irq numbers
+ * to device irq numbers... in our case they just happen to all do the same
+ * thing */
+
+static irqreturn_t done_handler(int irq, void *opaque)
+{
+	return sync_handler(MACCHIATO_IRQ_DONE, opaque);
+}
+
+static irqreturn_t failed_handler(int irq, void *opaque)
+{
+	return sync_handler(MACCHIATO_IRQ_FAILED, opaque);
+}
+
+static irqreturn_t next_block_handler(int irq, void *opaque)
+{
+	return sync_handler(MACCHIATO_IRQ_NEXT_BLOCK, opaque);
+}
+
+static irqreturn_t first_block_handler(int irq, void *opaque)
+{
+	return sync_handler(MACCHIATO_IRQ_FIRST_BLOCK, opaque);
+}
+
 static const irq_handler_t handlers[MACCHIATO_IRQ_CNT] = {
-	[MACCHIATO_IRQ_DONE] = sync_handler,
-	[MACCHIATO_IRQ_FAILED] = sync_handler,
-	[MACCHIATO_IRQ_NEXT_BLOCK] = sync_handler,
-	[MACCHIATO_IRQ_FIRST_BLOCK] = sync_handler,
+	[MACCHIATO_IRQ_DONE] = done_handler,
+	[MACCHIATO_IRQ_FAILED] = failed_handler,
+	[MACCHIATO_IRQ_NEXT_BLOCK] = next_block_handler,
+	[MACCHIATO_IRQ_FIRST_BLOCK] = first_block_handler,
 };
 
 int macchiato_irq_enable(struct pci_dev *pdev)
@@ -38,8 +64,7 @@ int macchiato_irq_enable(struct pci_dev *pdev)
 
 	/* allocate interrupt vectors */
 	if ((err = pci_alloc_irq_vectors(pdev, MACCHIATO_IRQ_CNT,
-					 MACCHIATO_IRQ_CNT, PCI_IRQ_MSIX)) <
-	    0) {
+					 MACCHIATO_IRQ_CNT, PCI_IRQ_MSI)) < 0) {
 		dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n",
 			ERR_PTR(err));
 		goto err_pci_alloc_irq_vectors;

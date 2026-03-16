@@ -26,6 +26,7 @@ struct macchiato_dev_data {
 	struct cdev cdev;
 	dev_t devt;
 	DECLARE_BITMAP(lock, MACCHIATO_LOCK_CNT);
+	enum macchiato_irq last_irq; /* ugly  */
 };
 
 struct macchiato_dev_data *macchiato_dev_data_alloc(void);
