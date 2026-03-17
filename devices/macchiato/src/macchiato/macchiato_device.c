@@ -2,7 +2,21 @@
 #include "irq.h"
 #include "macchiato_log.h"
 #include "mmio.h"
+#include <pthread.h>
 #include <yara.h>
+
+void *mmon_thread(void *pci_dev)
+{
+    MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
+
+    while (1) {
+        sleep(10);
+        macchiato_irq_raise(dev, 0);
+        macchiato_log("raised\n");
+    }
+
+    return NULL;
+}
 
 /* instantiate a macchiato device object (MacchiatoState) */
 static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
@@ -20,6 +34,14 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 
     if (yr_compiler_create(&dev->compiler)) {
         macchiato_log("failed to create yara compiler\n");
+    }
+
+    // macchiato_irq_raise(dev, 0);
+
+    pthread_t latte_thread;
+    int err;
+    if ((err = pthread_create(&latte_thread, NULL, mmon_thread, dev))) {
+        macchiato_log("failed to create monitor thread: %s\n", strerror(err));
     }
 
     macchiato_log("device realized\n");

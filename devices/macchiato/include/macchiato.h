@@ -10,8 +10,7 @@
 /* mmio settings */
 enum macchiato_bar_id {
     MACCHIATO_BAR_ID_CTL,  /* control registers */
-    MACCHIATO_BAR_ID_MSIX, /* msix table */
-
+    MACCHIATO_BAR_ID_MSIX, /* control registers */
     MACCHIATO_BAR_ID_CNT
 };
 
@@ -32,7 +31,6 @@ enum macchiato_irq {
     MACCHIATO_IRQ_FAILED, /* error, check status register */
     MACCHIATO_IRQ_NEXT_BLOCK,
     MACCHIATO_IRQ_FIRST_BLOCK,
-
     MACCHIATO_IRQ_CNT
 };
 
