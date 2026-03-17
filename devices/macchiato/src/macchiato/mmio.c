@@ -22,7 +22,7 @@ static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_BAR_CTL_SZ) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_ACCESS_SIZE) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio read: addr=%#" PRIx64 " idx=%u\n", addr,
                       idx);
         return 0;
@@ -40,7 +40,7 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     MacchiatoState *dev = opaque;
     unsigned int idx;
 
-    if ((idx = addr / MACCHIATO_BAR_CTL_SZ) >= MACCHIATO_REG_CNT) {
+    if ((idx = addr / MACCHIATO_ACCESS_SIZE) >= MACCHIATO_REG_CNT) {
         macchiato_log("got invalid mmio write: addr=%#" PRIx64 " idx=%u\n",
                       addr, idx);
         return;

@@ -14,9 +14,10 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
 
+	printk("got %d int\n", hw_irqn);
 	data->last_hwirq = hw_irqn;
 	complete(&data->sync);
-	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_DONE);
+	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, hw_irqn);
 
 	return IRQ_HANDLED;
 }
@@ -56,15 +57,15 @@ int macchiato_irq_enable(struct pci_dev *pdev)
 {
 	struct device *dev;
 	struct macchiato_dev_data *data;
-	enum macchiato_irq hw_irqn;
-	int err, irqn;
+	int err, hw_irqn, irqn;
 
 	dev = &pdev->dev;
 	data = pci_get_drvdata(pdev);
 
 	/* allocate interrupt vectors */
 	if ((err = pci_alloc_irq_vectors(pdev, MACCHIATO_IRQ_CNT,
-					 MACCHIATO_IRQ_CNT, PCI_IRQ_MSI)) < 0) {
+					 MACCHIATO_IRQ_CNT, PCI_IRQ_MSIX)) <
+	    0) {
 		dev_err(dev, "pci_alloc_irq_vectors() failed: %pe\n",
 			ERR_PTR(err));
 		goto err_pci_alloc_irq_vectors;
@@ -100,8 +101,7 @@ err_pci_alloc_irq_vectors:
 
 void macchiato_irq_disable(struct pci_dev *pdev)
 {
-	enum macchiato_irq hw_irqn;
-	int irqn;
+	int hw_irqn, irqn;
 
 	hw_irqn = MACCHIATO_IRQ_CNT;
 

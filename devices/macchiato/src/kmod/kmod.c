@@ -63,12 +63,11 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_macchiato_mmio_enable;
 	}
 
-	/* what the fuck
 	if ((err = macchiato_irq_enable(pdev))) {
-	  dev_err(dev, "macchiato_irq_enable() failed: %pe\n", ERR_PTR(err));
-	  goto err_macchiato_irq_enable;
+		dev_err(dev, "macchiato_irq_enable() failed: %pe\n",
+			ERR_PTR(err));
+		goto err_macchiato_irq_enable;
 	}
-	*/
 
 	if ((err = macchiato_chardev_create(pdev))) {
 		dev_err(dev, "macchiato_chardev_create() failed: %pe\n",

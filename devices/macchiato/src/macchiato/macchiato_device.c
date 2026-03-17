@@ -10,8 +10,11 @@ void *mmon_thread(void *pci_dev)
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
 
     while (1) {
-        sleep(10);
+        sleep(4);
         macchiato_irq_raise(dev, 0);
+        macchiato_irq_raise(dev, 1);
+        macchiato_irq_raise(dev, 2);
+        macchiato_irq_raise(dev, 3);
         macchiato_log("raised\n");
     }
 

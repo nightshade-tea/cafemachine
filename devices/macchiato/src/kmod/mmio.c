@@ -7,12 +7,10 @@ int macchiato_mmio_enable(struct pci_dev *pdev)
 {
 	struct macchiato_dev_data *data;
 	struct device *dev;
-	enum macchiato_bar_id id;
-	int err;
+	int err, id;
 
 	dev = &pdev->dev;
 	data = pci_get_drvdata(pdev);
-	id = MACCHIATO_BAR_ID_CNT;
 
 	for (id = 0; id < MACCHIATO_BAR_ID_CNT; id++) {
 
@@ -67,7 +65,7 @@ err_pci_request_region:
 void macchiato_mmio_disable(struct pci_dev *pdev)
 {
 	struct macchiato_dev_data *data;
-	enum macchiato_bar_id id;
+	int id;
 
 	data = pci_get_drvdata(pdev);
 	id = MACCHIATO_BAR_ID_CNT;
