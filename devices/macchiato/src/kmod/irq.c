@@ -14,7 +14,7 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
 
-	data->last_irq = hw_irqn;
+	data->last_hwirq = hw_irqn;
 	complete(&data->sync);
 	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, MACCHIATO_IRQ_DONE);
 

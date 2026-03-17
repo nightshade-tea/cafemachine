@@ -1,19 +1,26 @@
 #include "data.h"
 #include "macchiato.h"
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/pci.h>
 
-struct macchiato_dev_data *macchiato_dev_data_alloc(void)
+int macchiato_dev_data_alloc(struct pci_dev *pdev)
 {
-	struct macchiato_dev_data *data;
+	struct macchiato_dev_data **pdata;
 
-	if (!(data = kzalloc(sizeof data, GFP_KERNEL)))
-		return NULL;
+	/* who gives a fuck  */
+	pdata = (struct macchiato_dev_data **)&pdev->dev.driver_data;
 
-	init_completion(&data->sync);
+	if (!(*pdata = kzalloc(sizeof **pdata, GFP_KERNEL)))
+		return -ENOMEM;
 
-	return data;
+	(*pdata)->pdev = pdev;
+	init_completion(&(*pdata)->sync);
+
+	return 0;
 }
 
-void macchiato_dev_data_free(struct macchiato_dev_data *data)
+void macchiato_dev_data_free(struct pci_dev *pdev)
 {
-	kfree(data);
+	kfree(pci_get_drvdata(pdev));
 }

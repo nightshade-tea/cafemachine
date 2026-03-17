@@ -11,13 +11,4 @@ int macchiato_irq_enable(struct pci_dev *pdev);
 
 void macchiato_irq_disable(struct pci_dev *pdev);
 
-static inline void macchiato_sync(struct pci_dev *pdev)
-{
-	struct macchiato_dev_data *data = pci_get_drvdata(pdev);
-	struct completion *c = &data->sync;
-
-	wait_for_completion(c);
-	reinit_completion(c);
-}
-
 #endif /* _MACCHIATO_IRQ_H_ */

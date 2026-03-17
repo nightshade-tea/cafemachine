@@ -20,7 +20,6 @@ MODULE_DEVICE_TABLE(pci, macchiato_id_table);
 /* device initialization */
 static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	struct macchiato_dev_data *data;
 	struct device *dev;
 	int err;
 
@@ -28,15 +27,11 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	pr_info("macchiato_probe()...");
 
-	if (!(data = macchiato_dev_data_alloc())) {
-		err = -ENOMEM;
+	if ((err = macchiato_dev_data_alloc(pdev))) {
 		dev_err(dev, "macchiato_dev_data_alloc() failed: %pe\n",
 			ERR_PTR(err));
 		goto err_macchiato_dev_data_alloc;
 	}
-
-	/* store macchiato_dev_data on pdev->dev.driver_data */
-	pci_set_drvdata(pdev, data);
 
 	if ((err = pci_enable_device(pdev))) {
 		dev_err(dev, "pci_enable_device() failed: %pe\n", ERR_PTR(err));
@@ -96,7 +91,7 @@ err_dma_set_mask_and_coherent:
 	pci_disable_device(pdev);
 
 err_pci_enable_device:
-	macchiato_dev_data_free(pci_get_drvdata(pdev));
+	macchiato_dev_data_free(pdev);
 	pci_set_drvdata(pdev, NULL);
 
 err_macchiato_dev_data_alloc:
@@ -123,7 +118,7 @@ static void macchiato_remove(struct pci_dev *pdev)
 	pci_disable_device(pdev);
 	macchiato_mmio_disable(pdev);
 
-	macchiato_dev_data_free(pci_get_drvdata(pdev));
+	macchiato_dev_data_free(pdev);
 	pci_set_drvdata(pdev, NULL);
 
 	pr_cont(" ok.\n");
