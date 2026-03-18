@@ -2,7 +2,6 @@
 
 static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
                                    void *message_data, void *user_data);
-
 static const uint8_t *get_blk_addr(YR_MEMORY_BLOCK *self);
 static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self);
 static YR_MEMORY_BLOCK *get_next_blk(YR_MEMORY_BLOCK_ITERATOR *self);
@@ -63,6 +62,121 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
     return ctx->valid;
 }
 
+/* results logging ----------------------------------------------------------*/
+
+static struct machyara_scan *machyara_scan_create(void)
+{
+    struct machyara_scan *s;
+
+    if (!(s = calloc(1, sizeof *s))) {
+        return NULL;
+    }
+
+    s->serialsz = sizeof s->serialsz;
+
+    return s;
+}
+
+static void machyara_scan_destroy(struct machyara_scan *scan)
+{
+    struct machyara_rule *r;
+
+    while ((r = scan->head)) {
+        scan->head = r->next;
+        free(r);
+    }
+
+    free(scan);
+}
+
+static struct machyara_rule *rule_create(const char *identifier,
+                                         uint8_t matched)
+{
+    struct machyara_rule *r;
+    size_t fullsz;
+
+    /* strlen + 1 to account for the null terminator */
+    fullsz = sizeof *r + strlen(identifier) + 1;
+
+    if (!(r = calloc(1, fullsz))) {
+        return NULL;
+    }
+
+    r->serialsz = sizeof r->serialsz + sizeof r->matched + fullsz - sizeof *r;
+    r->matched = matched;
+    strcpy(r->identifier, identifier);
+
+    return r;
+}
+
+static int machyara_scan_add_rule(struct machyara_scan *scan,
+                                  const char *identifier, uint8_t matched)
+{
+    struct machyara_rule *r;
+
+    if (!(r = rule_create(identifier, matched))) {
+        return -ENOMEM;
+    }
+
+    if (!scan->head) {
+        scan->head = scan->tail = r;
+    } else {
+        scan->tail = scan->tail->next = r;
+    }
+
+    scan->serialsz += r->serialsz;
+
+    return 0;
+}
+
+/* results serialization ----------------------------------------------------*/
+
+static size_t write_serialized_scan(MacchiatoState *dev, hwaddr dest,
+                                    struct machyara_scan *src)
+{
+    macchiato_dma_write(dev, dest, &src->serialsz, sizeof src->serialsz);
+    return sizeof src->serialsz;
+}
+
+/* caller: check if return value is equal to src->serialsz */
+static size_t write_serialized_rule(MacchiatoState *dev, hwaddr dest,
+                                    struct machyara_rule *src)
+{
+    size_t off = 0;
+
+    macchiato_dma_write(dev, dest + off, &src->serialsz, sizeof src->serialsz);
+    off += sizeof src->serialsz;
+
+    macchiato_dma_write(dev, dest + off, &src->matched, sizeof src->matched);
+    off += sizeof src->matched;
+
+    macchiato_dma_write(dev, dest + off, src->identifier, src->serialsz - off);
+
+    return src->serialsz;
+}
+
+static int machyara_serialize(MacchiatoState *dev)
+{
+    struct machyara_scan *src;
+    struct machyara_rule *r;
+    size_t off;
+    hwaddr dest;
+
+    src = dev->scan;
+    dest = dev->reg[MACCHIATO_REG_ADDR];
+    off = 0;
+
+    off += write_serialized_scan(dev, dest + off, src);
+    r = src->head;
+
+    while (r && off + r->serialsz <= src->serialsz) {
+        off += write_serialized_rule(dev, dest + off, r);
+        r = r->next;
+    }
+
+    return 0;
+}
+
 /* callbacks ----------------------------------------------------------------*/
 
 static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
@@ -70,6 +184,9 @@ static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
 {
     const char *identifier = NULL;
     uint8_t matched = 0;
+
+    MacchiatoState *dev =
+        ((struct iterator_context *)context->iterator->context)->dev;
 
     switch (message) {
     case CALLBACK_MSG_RULE_MATCHING:
@@ -90,7 +207,7 @@ static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
     }
 
     if (identifier) {
-        // machyara_scan_add_rule(scan, identifier, matched);
+        machyara_scan_add_rule(dev->scan, identifier, matched);
         printf("rule=%s -> matched=%u\n", identifier, matched);
     }
 
@@ -105,6 +222,10 @@ static uint8_t fetch_next_blk(struct iterator_context *ctx)
 
     // if consumed the whole user buffer ask for more
     if (ctx->dmaoff >= dev->reg[MACCHIATO_REG_SIZE]) {
+
+        // report total findings size
+        dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
+
         macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BLOCK);
         wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BLOCK);
 
@@ -129,6 +250,9 @@ static uint8_t fetch_first_blk(struct iterator_context *ctx)
 
     /*if  not on  the first blk fetch it */
     if (ctx->totaloff >= dev->reg[MACCHIATO_REG_SIZE]) {
+        // report total findings size
+        dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
+
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FIRST_BLOCK);
         wait_for_irq(dev, MACCHIATO_IRQ_FIRST_BLOCK);
     }
@@ -194,6 +318,13 @@ void reset_scanner(MacchiatoState *dev)
 {
     if (dev->scanner) {
         yr_scanner_destroy(dev->scanner);
+        machyara_scan_destroy(dev->scan);
+    }
+
+    if (!(dev->scan = machyara_scan_create())) {
+        macchiato_log(
+            "failed to reset scanner: unable to allocate machyara struct\n");
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
     }
 
     macchiato_log("scanner reset\n");
@@ -246,4 +377,7 @@ failed:
     return;
 }
 
-// void get_results();
+void get_results(MacchiatoState *dev)
+{
+    machyara_serialize(dev);
+}

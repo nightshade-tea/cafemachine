@@ -17,6 +17,19 @@ struct iterator_context {
     YR_MEMORY_BLOCK block;
 };
 
+struct machyara_rule {
+    uint64_t serialsz; /* serialized size of this rule */
+    uint8_t matched;   /* zero -> not matched, not zero -> matched */
+    struct machyara_rule *next;
+    char identifier[]; /* rule name string */
+};
+
+struct machyara_scan {
+    uint64_t serialsz; /* serialized size of rule chain (dest buffer size) */
+    struct machyara_rule *head;
+    struct machyara_rule *tail;
+};
+
 void reset_compiler(MacchiatoState *dev);
 
 void reset_scanner(MacchiatoState *dev);
@@ -24,5 +37,7 @@ void reset_scanner(MacchiatoState *dev);
 void add_rule(MacchiatoState *dev, hwaddr addr, size_t size);
 
 void scan_buffer(MacchiatoState *dev);
+
+void get_results(MacchiatoState *dev);
 
 #endif

@@ -26,19 +26,17 @@ int macchiato_dma_read(MacchiatoState *dev, hwaddr addr, hwaddr size)
     return dma_read(dev, dev->buffer, addr, size);
 }
 
-MemTxResult macchiato_dma_write(MacchiatoState *dev)
+MemTxResult macchiato_dma_write(MacchiatoState *dev, hwaddr dest, void *src,
+                                size_t size)
 {
     MemTxResult err;
 
-    // TODO
-    /*
-    err = pci_dma_write(&dev->pci_dev, dev->reg[MACCHIATO_DMA_DST],
-    dev->dma_buf, dev->reg[MACCHIATO_DMA_SZ]);
+    err = pci_dma_write(&dev->pci_dev, dest, src, size);
 
-    if (err != MEMTX_OK)
-      macchiato_log("failed dma write: sz=%#" PRIx64 " dst_addr=%#" PRIx64 "\n",
-               dev->reg[MACCHIATO_DMA_SZ], dev->reg[MACCHIATO_DMA_DST]);
-               */
-
+    if (err != MEMTX_OK) {
+        macchiato_log("failed dma write: sz=%#" PRIx64 " dst_addr=%#" PRIx64
+                      "\n",
+                      size, dest);
+    }
     return 0;
 }
