@@ -13,8 +13,6 @@ const char *dummy_rule = " rule dummy { "
                          "     $str "
                          " } ";
 
-static YR_RULES *rules;
-
 void *mmon_thread(void *pci_dev)
 {
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
@@ -26,11 +24,7 @@ void *mmon_thread(void *pci_dev)
         macchiato_log("failed to add dummy rule");
     }
 
-    if (yr_compiler_get_rules(dev->compiler, &rules)) {
-        macchiato_log("failed to get rules");
-    }
-
-    reset_scanner(dev);
+    scan_buffer(dev);
 
     /*
     while(1) {

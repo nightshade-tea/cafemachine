@@ -20,4 +20,6 @@ void reset_scanner(MacchiatoState *dev);
 
 void add_rule(MacchiatoState *dev, hwaddr addr, size_t size);
 
+void scan_buffer(MacchiatoState *dev);
+
 #endif
