@@ -12,6 +12,21 @@ static void macchiato_cmd(MacchiatoState *dev)
     macchiato_log("got %#" PRIx64 " command\n", dev->reg[MACCHIATO_REG_CMD]);
 
     switch (dev->reg[MACCHIATO_REG_CMD]) {
+    case MACCHIATO_OP_RESET_COMPILER:
+        reset_compiler(dev);
+        break;
+    case MACCHIATO_OP_RESET_SCANNER:
+        reset_scanner(dev);
+        break;
+    case MACCHIATO_OP_ADD_RULE:
+        add_rule(dev);
+        break;
+    case MACCHIATO_OP_SCAN_BUFFER:
+        scan_buffer(dev);
+        break;
+    case MACCHIATO_OP_GET_RESULTS:
+        get_results(dev);
+        break;
     default:
         break;
     }

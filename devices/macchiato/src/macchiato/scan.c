@@ -333,8 +333,11 @@ void reset_scanner(MacchiatoState *dev)
     return;
 }
 
-void add_rule(MacchiatoState *dev, hwaddr addr, size_t size)
+void add_rule(MacchiatoState *dev)
 {
+    size_t size = dev->reg[MACCHIATO_REG_SIZE];
+    hwaddr addr = dev->reg[MACCHIATO_REG_ADDR];
+
     if (macchiato_dma_read(dev, addr, size)) {
         macchiato_log("failed to add rule: unable to fetch rule\n");
         goto failed;

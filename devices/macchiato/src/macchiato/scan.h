@@ -34,7 +34,7 @@ void reset_compiler(MacchiatoState *dev);
 
 void reset_scanner(MacchiatoState *dev);
 
-void add_rule(MacchiatoState *dev, hwaddr addr, size_t size);
+void add_rule(MacchiatoState *dev);
 
 void scan_buffer(MacchiatoState *dev);
 

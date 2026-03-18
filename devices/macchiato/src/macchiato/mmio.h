@@ -4,6 +4,7 @@
 #include "irq.h"
 #include "macchiato_device.h"
 #include "macchiato_log.h"
+#include "scan.h"
 #include <sys/param.h>
 
 extern const MemoryRegionOps macchiato_reg_ops;
