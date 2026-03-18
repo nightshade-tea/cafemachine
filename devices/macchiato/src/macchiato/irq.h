@@ -20,4 +20,6 @@ void macchiato_irq_lower(MacchiatoState *dev, unsigned int vector);
 
 void macchiato_irq_reset(MacchiatoState *dev);
 
+void wait_for_irq(MacchiatoState *dev, int vector);
+
 #endif /* MACCHIATO_IRQ_H */

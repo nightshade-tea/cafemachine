@@ -6,6 +6,7 @@
 #include "hw/pci/pci.h"
 #include "macchiato.h"
 #include <errno.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <string.h>
 #include <yara.h>
@@ -36,8 +37,9 @@ typedef struct MacchiatoState {
 
     /* raised interrupts vector */
     bool irq[MACCHIATO_IRQ_CNT];
+    pthread_mutex_t irq_locks[MACCHIATO_IRQ_CNT];
 
-    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER + 1];
+    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER];
 
 } MacchiatoState;
 

@@ -13,6 +13,7 @@ void macchiato_irq_init(MacchiatoState *dev, Error **errp)
 
     for (uint32_t i = 0; i < MACCHIATO_IRQ_CNT; i++) {
         msix_vector_use(&dev->pci_dev, i);
+        pthread_mutex_init(&dev->irq_locks[i], NULL);
     }
 
     macchiato_log("irq initialized\n");
@@ -31,6 +32,8 @@ void macchiato_irq_raise(MacchiatoState *dev, unsigned int vector)
         return;
     }
 
+    pthread_mutex_lock(&dev->irq_locks[vector]);
+
     dev->irq[vector] = true;
     msix_notify(&dev->pci_dev, vector);
 
@@ -44,7 +47,8 @@ void macchiato_irq_lower(MacchiatoState *dev, unsigned int vector)
     }
 
     dev->irq[vector] = false;
-    msix_clr_pending(&dev->pci_dev, vector);
+
+    pthread_mutex_unlock(&dev->irq_locks[vector]);
 
     macchiato_log("irq %u lowered\n", vector);
 }
@@ -53,4 +57,10 @@ void macchiato_irq_reset(MacchiatoState *dev)
 {
     memset(&dev->irq, 0, sizeof dev->irq);
     macchiato_log("irq_reset: all irqs lowered\n");
+}
+
+void wait_for_irq(MacchiatoState *dev, int vector)
+{
+    pthread_mutex_lock(&dev->irq_locks[vector]);
+    pthread_mutex_unlock(&dev->irq_locks[vector]);
 }
