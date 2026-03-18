@@ -2,21 +2,46 @@
 #include "irq.h"
 #include "macchiato_log.h"
 #include "mmio.h"
+#include "scan.h"
 #include <pthread.h>
 #include <yara.h>
+
+const char *dummy_rule = " rule dummy { "
+                         "   strings: "
+                         "     $str = \"dummy\" "
+                         "   condition: "
+                         "     $str "
+                         " } ";
+
+static YR_RULES *rules;
 
 void *mmon_thread(void *pci_dev)
 {
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
 
-    while (1) {
-        sleep(4);
-        macchiato_irq_raise(dev, 0);
-        macchiato_irq_raise(dev, 1);
-        macchiato_irq_raise(dev, 2);
-        macchiato_irq_raise(dev, 3);
-        macchiato_log("raised\n");
+    reset_compiler(dev);
+    reset_scanner(dev);
+
+    if (yr_compiler_add_string(dev->compiler, dummy_rule, NULL)) {
+        macchiato_log("failed to add dummy rule");
     }
+
+    if (yr_compiler_get_rules(dev->compiler, &rules)) {
+        macchiato_log("failed to get rules");
+    }
+
+    reset_scanner(dev);
+
+    /*
+    while(1) {
+      sleep(4);
+      macchiato_irq_raise(dev, 0);
+      macchiato_irq_raise(dev, 1);
+      macchiato_irq_raise(dev, 2);
+      macchiato_irq_raise(dev, 3);
+      macchiato_log("raised\n");
+    }
+    */
 
     return NULL;
 }
@@ -35,11 +60,8 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
     macchiato_mmio_init(dev, errp);
     macchiato_irq_init(dev, errp);
 
-    if (yr_compiler_create(&dev->compiler)) {
-        macchiato_log("failed to create yara compiler\n");
-    }
-
-    // macchiato_irq_raise(dev, 0);
+    dev->compiler = NULL;
+    dev->scanner = NULL;
 
     pthread_t latte_thread;
     int err;

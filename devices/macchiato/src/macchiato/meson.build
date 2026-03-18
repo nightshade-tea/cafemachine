@@ -5,6 +5,8 @@ yara_dep = dependency('yara', required: true)
      'macchiato_device.c',
      'mmio.c',
      'irq.c',
+     'dma.c',
+     'scan.c',
      ),
    yara_dep
    ])

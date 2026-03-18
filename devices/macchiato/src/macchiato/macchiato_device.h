@@ -37,7 +37,7 @@ typedef struct MacchiatoState {
     /* raised interrupts vector */
     bool irq[MACCHIATO_IRQ_CNT];
 
-    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER];
+    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER + 1];
 
 } MacchiatoState;
 

@@ -73,7 +73,7 @@ enum macchiato_op {
  *
  * RESET_COMPILER :: once
  * RESET_SCANNER  :: once
- * ADD_RULE       :: n times
+ * ADD_RULES      :: n times
  * SCAN_BUFFER    :: n times
  * GET_RESULTS    :: once
  *
