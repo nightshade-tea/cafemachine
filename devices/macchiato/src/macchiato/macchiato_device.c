@@ -6,40 +6,6 @@
 #include <pthread.h>
 #include <yara.h>
 
-const char *dummy_rule = " rule dummy { "
-                         "   strings: "
-                         "     $str = \"dummy\" "
-                         "   condition: "
-                         "     $str "
-                         " } ";
-
-void *mmon_thread(void *pci_dev)
-{
-    MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
-
-    reset_compiler(dev);
-    reset_scanner(dev);
-
-    if (yr_compiler_add_string(dev->compiler, dummy_rule, NULL)) {
-        macchiato_log("failed to add dummy rule");
-    }
-
-    scan_buffer(dev);
-
-    /*
-    while(1) {
-      sleep(4);
-      macchiato_irq_raise(dev, 0);
-      macchiato_irq_raise(dev, 1);
-      macchiato_irq_raise(dev, 2);
-      macchiato_irq_raise(dev, 3);
-      macchiato_log("raised\n");
-    }
-    */
-
-    return NULL;
-}
-
 /* instantiate a macchiato device object (MacchiatoState) */
 static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 {
@@ -56,12 +22,6 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 
     dev->compiler = NULL;
     dev->scanner = NULL;
-
-    pthread_t latte_thread;
-    int err;
-    if ((err = pthread_create(&latte_thread, NULL, mmon_thread, dev))) {
-        macchiato_log("failed to create monitor thread: %s\n", strerror(err));
-    }
 
     macchiato_log("device realized\n");
 }
