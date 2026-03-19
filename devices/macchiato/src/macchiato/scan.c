@@ -346,6 +346,8 @@ void add_rule(MacchiatoState *dev)
     /* dma read ensures enough space */
     dev->buffer[size] = 0;
 
+    //  macchiato_log("rulestr='%s'\n", (char *)dev->buffer);
+
     if (yr_compiler_add_string(dev->compiler, (char *)dev->buffer, NULL)) {
         macchiato_log("failed to add rule: unable to add string to compiler\n");
         goto failed;

@@ -11,14 +11,18 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	struct pci_dev *pdev;
 	struct macchiato_dev_data *data;
 
+	printk("GOT INTERRUPT hw_irqn=%d", hw_irqn);
+
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
 
-	printk("got %d int\n", hw_irqn);
 	data->last_hwirq = hw_irqn;
 	complete(&data->sync);
+
+	printk("LOWERING hw_irqn=%d", hw_irqn);
 	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, hw_irqn);
 
+	printk("IRQ HANDLED hw_irqn=%d", hw_irqn);
 	return IRQ_HANDLED;
 }
 

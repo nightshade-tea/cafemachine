@@ -29,11 +29,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  getchar();
+
   // 1. ADD RULE
   size_t rule_len = strlen(argv[1]) + 1;
   strcpy(buf, argv[1]);
   printf("[*] Adding rule (%zu bytes)...\n", rule_len);
-  if (ioctl(fd, MACCHIATO_OP_ADD_RULE, rule_len) < 0) {
+  if (ioctl(fd, MACCHIATO_IOC_ADD_RULE, rule_len) < 0) {
     perror("ioctl ADD_RULE");
     goto cleanup;
   }
@@ -42,14 +44,14 @@ int main(int argc, char **argv) {
   size_t target_len = strlen(argv[2]) + 1;
   strcpy(buf, argv[2]); // overwrite the rule with the target data
   printf("[*] Scanning buffer (%zu bytes)...\n", target_len);
-  if (ioctl(fd, MACCHIATO_OP_SCAN_BUFFER, target_len) < 0) {
+  if (ioctl(fd, MACCHIATO_IOC_SCAN_BUFFER, target_len) < 0) {
     perror("ioctl SCAN_BUFFER");
     goto cleanup;
   }
 
   // 3. GET RESULTS
   printf("[*] Fetching results...\n");
-  if (ioctl(fd, MACCHIATO_OP_GET_RESULTS, 0) < 0) {
+  if (ioctl(fd, MACCHIATO_IOC_GET_RESULTS, 0) < 0) {
     perror("ioctl GET_RESULTS");
     goto cleanup;
   }

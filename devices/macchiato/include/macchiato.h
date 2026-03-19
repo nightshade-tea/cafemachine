@@ -79,4 +79,18 @@ enum macchiato_op {
  *
  */
 
+#ifdef __KERNEL__
+#include <linux/ioctl.h>
+#else
+#include <sys/ioctl.h>
+#endif
+
+#define MACCHIATO_IOC_MAGIC 'Y'
+
+#define MACCHIATO_IOC_RESET_COMPILER _IO(MACCHIATO_IOC_MAGIC, 0)
+#define MACCHIATO_IOC_RESET_SCANNER _IO(MACCHIATO_IOC_MAGIC, 1)
+#define MACCHIATO_IOC_ADD_RULE _IO(MACCHIATO_IOC_MAGIC, 2)
+#define MACCHIATO_IOC_SCAN_BUFFER _IO(MACCHIATO_IOC_MAGIC, 3)
+#define MACCHIATO_IOC_GET_RESULTS _IO(MACCHIATO_IOC_MAGIC, 4)
+
 #endif /* MACCHIATO_H */
