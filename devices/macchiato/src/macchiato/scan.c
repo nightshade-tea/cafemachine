@@ -21,21 +21,17 @@ static YR_MEMORY_BLOCK_ITERATOR iterator = {
 
 static int setup_scanner(MacchiatoState *dev)
 {
-    macchiato_log("aaaaaa1\n");
     if (yr_compiler_get_rules(dev->compiler, &dev->rules)) {
         macchiato_log("failed to setup scanner: unable to get rules\n");
         return 1;
     }
 
-    macchiato_log("aaaaaa2\n");
     if (yr_scanner_create(dev->rules, &dev->scanner)) {
         macchiato_log("failed to setup scanner: unable to create scanner\n");
         return 1;
     }
 
-    macchiato_log("aaaaaa3\n");
     yr_scanner_set_callback(dev->scanner, macchiato_yara_callback, NULL);
-    macchiato_log("aaaaaa4\n");
 
     return 0;
 }
@@ -374,6 +370,7 @@ void scan_buffer(MacchiatoState *dev)
 
     iterctx.dev = dev;
 
+    macchiato_log("aaaaaa1\n");
     if (yr_scanner_scan_mem_blocks(dev->scanner, &iterator)) {
         macchiato_log("failed to scan buffer: scan failed");
         goto failed;
