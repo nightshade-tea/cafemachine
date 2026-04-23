@@ -143,14 +143,15 @@ static long scan_buffer(struct macchiato_dev_data *data, unsigned long arg)
 	writeq(arg, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 			    MACCHIATO_REG_SIZE * 8);
 
-	printk("scan_buffer(): reinit_completion()...");
+	printk("scan_buffer(): reinit_completion()...\n");
 	reinit_completion(&data->sync);
-	printk("scan_buffer(): sending command...");
+	printk("scan_buffer(): sending command...\n");
 	writeq(MACCHIATO_OP_SCAN_BUFFER,
 	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 		       MACCHIATO_REG_CMD * 8);
-	printk("scan_buffer(): waiting for completion...");
+	printk("scan_buffer(): waiting for completion...\n");
 	wait_for_completion(&data->sync);
+	printk("WAIT FOR COMPLETION DONE\n");
 
 	switch (data->last_hwirq) {
 	case MACCHIATO_IRQ_FAILED:

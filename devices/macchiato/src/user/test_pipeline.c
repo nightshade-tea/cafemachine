@@ -29,8 +29,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  getchar();
-
   // 1. ADD RULE
   size_t rule_len = strlen(argv[1]) + 1;
   strcpy(buf, argv[1]);
@@ -42,6 +40,8 @@ int main(int argc, char **argv) {
 
   // 2. SCAN BUFFER
   size_t target_len = strlen(argv[2]) + 1;
+  buf[target_len - 1] = 0;
+
   strcpy(buf, argv[2]); // overwrite the rule with the target data
   printf("[*] Scanning buffer (%zu bytes)...\n", target_len);
   if (ioctl(fd, MACCHIATO_IOC_SCAN_BUFFER, target_len) < 0) {
