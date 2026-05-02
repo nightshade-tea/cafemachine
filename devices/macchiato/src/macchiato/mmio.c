@@ -73,6 +73,10 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     case MACCHIATO_REG_LOWER_IRQ:
         macchiato_irq_lower(dev, data);
         return;
+
+    case MACCHIATO_REG_INT_TEST:
+        macchiato_log("macchiato interrupt test...\n");
+        macchiato_irq_raise(dev, data);
     }
 
     dev->reg[idx] = data;

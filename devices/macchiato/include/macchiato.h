@@ -9,8 +9,9 @@
 
 /* mmio settings */
 enum macchiato_bar_id {
-    MACCHIATO_BAR_ID_CTL,  /* control registers */
-    MACCHIATO_BAR_ID_MSIX, /* control registers */
+    MACCHIATO_BAR_ID_CTL, /* control registers */
+    MACCHIATO_BAR_ID_MSIX,
+
     MACCHIATO_BAR_ID_CNT
 };
 
@@ -21,6 +22,8 @@ enum macchiato_reg {
     MACCHIATO_REG_ADDR,      /* In */
     MACCHIATO_REG_SIZE,      /* In/Out */
     MACCHIATO_REG_STATUS,    /* Out */
+    MACCHIATO_REG_INT_TEST,  /* debugging: write interrupt number to this
+                                register to trigger it */
 
     MACCHIATO_REG_CNT
 };
