@@ -17,33 +17,33 @@ static inline struct pci_dev *minor_pdev(int minor)
 
 static long reset_compiler(struct macchiato_dev_data *data)
 {
-	printk("reset_compiler(): reinit_completion()...");
+	printk("reset_compiler(): reinit_completion()...\n");
 	reinit_completion(&data->sync);
-	printk("reset_compiler(): sending command...");
+	printk("reset_compiler(): sending command...\n");
 	writeq(MACCHIATO_OP_RESET_COMPILER,
 	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 		       MACCHIATO_REG_CMD * 8);
 
-	printk("reset_compiler(): waiting for completion...");
+	printk("reset_compiler(): waiting for completion...\n");
 	wait_for_completion(&data->sync);
 
-	printk("reset_compiler(): done!");
+	printk("reset_compiler(): done!\n");
 	return 0;
 }
 
 static long reset_scanner(struct macchiato_dev_data *data)
 {
-	printk("reset_scanner(): reinit_completion()...");
+	printk("reset_scanner(): reinit_completion()...\n");
 	reinit_completion(&data->sync);
-	printk("reset_scanner(): sending command...");
+	printk("reset_scanner(): sending command...\n");
 	writeq(MACCHIATO_OP_RESET_SCANNER,
 	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 		       MACCHIATO_REG_CMD * 8);
 
-	printk("reset_scanner(): waiting for completion...");
+	printk("reset_scanner(): waiting for completion...\n");
 	wait_for_completion(&data->sync);
 
-	printk("reset_scanner(): done!");
+	printk("reset_scanner(): done!\n");
 	return 0;
 }
 
@@ -63,10 +63,10 @@ static int open(struct inode *inode, struct file *file)
 
 	file->private_data = data;
 
-	printk("open(): reset_compiler()...");
+	printk("open(): reset_compiler()...\n");
 	reset_compiler(data);
 
-	printk("open(): reset_scanner()...");
+	printk("open(): reset_scanner()...\n");
 	reset_scanner(data);
 
 	printk("open(): done!\n");
@@ -82,22 +82,22 @@ static int release(struct inode *inode, struct file *file)
 	pdev = data->pdev;
 
 	if (data->dmabuf.size) {
-		printk("release(): freeing dmabuf...");
+		printk("release(): freeing dmabuf...\n");
 		dma_free_coherent(&pdev->dev, data->dmabuf.size,
 				  data->dmabuf.kvaddr, data->dmabuf.paddr);
 		data->dmabuf.size = 0;
 	}
 
-	printk("release(): releasing char device lock...");
+	printk("release(): releasing char device lock...\n");
 	clear_bit_unlock(MACCHIATO_LOCK_FD, data->lock);
 
-	printk("release(): done!");
+	printk("release(): done!\n");
 	return 0;
 }
 
 static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 {
-	printk("add_rules called...");
+	printk("add_rules called...\n");
 
 	if (!data->dmabuf.size)
 		return -EFAULT;
@@ -111,20 +111,20 @@ static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 	writeq(arg, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 			    MACCHIATO_REG_SIZE * 8);
 
-	printk("add_rules(): reinit_completion()...");
+	printk("add_rules(): reinit_completion()...\n");
 	reinit_completion(&data->sync);
-	printk("add_rules(): sending command...");
+	printk("add_rules(): sending command...\n");
 	writeq(MACCHIATO_OP_ADD_RULE,
 	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 		       MACCHIATO_REG_CMD * 8);
-	printk("add_rules(): waiting for completion...");
+	printk("add_rules(): waiting for completion...\n");
 	wait_for_completion(&data->sync);
 
 	if (data->last_hwirq == MACCHIATO_IRQ_FAILED)
 		return -ENOSPC; /* just want an unique errno so i can track it
 				   without printing stuff  */
 
-	printk("add_rules(): done!");
+	printk("add_rules(): done!\n");
 	return 0;
 }
 
@@ -161,7 +161,7 @@ static long scan_buffer(struct macchiato_dev_data *data, unsigned long arg)
 		return -EAGAIN;
 	}
 
-	printk("scan_buffer(): done!");
+	printk("scan_buffer(): done!\n");
 	return 0;
 }
 
@@ -191,19 +191,19 @@ static long get_results(struct macchiato_dev_data *data)
 	writeq(data->dmabuf.size, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 					  MACCHIATO_REG_SIZE * 8);
 
-	printk("get_results(): reinit_completion()...");
+	printk("get_results(): reinit_completion()...\n");
 	reinit_completion(&data->sync);
-	printk("get_results(): sending command...");
+	printk("get_results(): sending command...\n");
 	writeq(MACCHIATO_OP_GET_RESULTS,
 	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
 		       MACCHIATO_REG_CMD * 8);
-	printk("get_results(): waiting for completion...");
+	printk("get_results(): waiting for completion...\n");
 	wait_for_completion(&data->sync);
 
 	if (data->last_hwirq == MACCHIATO_IRQ_FAILED)
 		return -ENOSPC;
 
-	printk("get_results(): done!");
+	printk("get_results(): done!\n");
 	return 0;
 }
 
@@ -213,31 +213,31 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	data = file->private_data;
 
-	printk("ioctl( cmd=%u arg=%lu )", cmd, arg);
+	printk("ioctl( cmd=%u arg=%lu )\n", cmd, arg);
 
 	switch (cmd) {
 	case MACCHIATO_IOC_RESET_COMPILER:
-		printk("ioctl(): reset_compiler()");
+		printk("ioctl(): reset_compiler()\n");
 		return reset_compiler(data);
 
 	case MACCHIATO_IOC_RESET_SCANNER:
-		printk("ioctl(): reset_scanner()");
+		printk("ioctl(): reset_scanner()\n");
 		return reset_scanner(data);
 
 	case MACCHIATO_IOC_ADD_RULE:
-		printk("ioctl(): add_rules()");
+		printk("ioctl(): add_rules()\n");
 		return add_rules(data, arg);
 
 	case MACCHIATO_IOC_SCAN_BUFFER:
-		printk("ioctl(): scan_buffer()");
+		printk("ioctl(): scan_buffer()\n");
 		return scan_buffer(data, arg);
 
 	case MACCHIATO_IOC_GET_RESULTS:
-		printk("ioctl(): get_results()");
+		printk("ioctl(): get_results()\n");
 		return get_results(data);
 	}
 
-	printk("ioctl(): -ENOTTY");
+	printk("ioctl(): -ENOTTY\n");
 	return -ENOTTY;
 }
 
@@ -311,14 +311,14 @@ static int mmap(struct file *file, struct vm_area_struct *vma)
 		return -ENFILE;
 
 	len = vma->vm_end - vma->vm_start; /* [vm_start; vm_end)  */
-	printk("mmap( len = %zu ): allocating memory...", len);
+	printk("mmap( len = %zu ): allocating memory...\n", len);
 	data->dmabuf.kvaddr = dma_alloc_coherent(
 		&pdev->dev, len, &data->dmabuf.paddr, GFP_KERNEL);
 
 	if (!data->dmabuf.kvaddr)
 		return -ENOMEM;
 
-	printk("mmap(): mapping memory...");
+	printk("mmap(): mapping memory...\n");
 	err = dma_mmap_coherent(&pdev->dev, vma, data->dmabuf.kvaddr,
 				data->dmabuf.paddr, len);
 
@@ -329,7 +329,7 @@ static int mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	data->dmabuf.size = len;
-	printk("mmap(): done!");
+	printk("mmap(): done!\n");
 	return 0;
 }
 

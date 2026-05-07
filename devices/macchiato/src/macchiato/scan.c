@@ -73,7 +73,7 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
     macchiato_log("fetch_blk() :: ctx->block.size=%zu\n", ctx->block.size);
 
     // copy
-    macchiato_log("fetch_blk() :: starting dma read... ");
+    macchiato_log("fetch_blk() :: starting dma read... \n");
     macchiato_dma_read(dev, dev->reg[MACCHIATO_REG_ADDR] + ctx->dmaoff,
                        ctx->block.size);
     macchiato_log("done\n");
@@ -229,17 +229,17 @@ static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
-        puts("scan finished");
+        macchiato_log("scan finished\n");
         break;
 
     case CALLBACK_MSG_CONSOLE_LOG:
-        printf("console log: %s\n", (char *)message_data);
+        macchiato_log("console log: %s\n", (char *)message_data);
         break;
     }
 
     if (identifier) {
         machyara_scan_add_rule(dev->scan, identifier, matched);
-        printf("rule=%s -> matched=%u\n", identifier, matched);
+        macchiato_log("rule=%s -> matched=%u\n", identifier, matched);
     }
 
     return CALLBACK_CONTINUE;
@@ -343,7 +343,7 @@ void reset_compiler(MacchiatoState *dev)
     }
 
     if (yr_compiler_create(&dev->compiler)) {
-        macchiato_log("failed to create yara compiler");
+        macchiato_log("failed to create yara compiler\n");
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return;
     }
@@ -404,7 +404,7 @@ failed:
 void scan_buffer(MacchiatoState *dev)
 {
     if (setup_scanner(dev)) {
-        macchiato_log("failed to scan buffer: unable to setup scanner");
+        macchiato_log("failed to scan buffer: unable to setup scanner\n");
         goto failed;
     }
 
@@ -412,7 +412,7 @@ void scan_buffer(MacchiatoState *dev)
 
     macchiato_log("aaaaaa1\n");
     if (yr_scanner_scan_mem_blocks(dev->scanner, &iterator)) {
-        macchiato_log("failed to scan buffer: scan failed");
+        macchiato_log("failed to scan buffer: scan failed\n");
         goto failed;
     }
 
