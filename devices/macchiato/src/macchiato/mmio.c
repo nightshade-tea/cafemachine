@@ -27,8 +27,6 @@ static void macchiato_cmd(MacchiatoState *dev)
     case MACCHIATO_OP_GET_RESULTS:
         get_results(dev);
         break;
-    default:
-        break;
     }
 }
 

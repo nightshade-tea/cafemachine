@@ -68,7 +68,7 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
         ctx->block.size = MACCHIATO_INTERNAL_BUFFER;
     }
 
-    macchiato_log("fetch_blk() :: ctx=%llx\n", ctx);
+    macchiato_log("fetch_blk() :: ctx=%p\n", ctx);
     macchiato_log("fetch_blk() :: ctx->dmaoff=%zu\n", ctx->dmaoff);
     macchiato_log("fetch_blk() :: ctx->block.size=%zu\n", ctx->block.size);
 
@@ -192,6 +192,10 @@ static int machyara_serialize(MacchiatoState *dev)
     src = dev->scan;
     dest = dev->reg[MACCHIATO_REG_ADDR];
     off = 0;
+
+    if (dev->reg[MACCHIATO_REG_SIZE] < src->serialsz) {
+        return -1;
+    }
 
     off += write_serialized_scan(dev, dest + off, src);
     r = src->head;
@@ -423,5 +427,11 @@ failed:
 
 void get_results(MacchiatoState *dev)
 {
-    machyara_serialize(dev);
+    if (machyara_serialize(dev) < 0) {
+        macchiato_log("failed serialize results: dont fit\n");
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+        return;
+    }
+
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
 }
