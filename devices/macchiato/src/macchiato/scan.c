@@ -414,6 +414,8 @@ void scan_buffer(MacchiatoState *dev)
 
     macchiato_log("scan finished\n");
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
+    return;
+
 failed:
     macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
     return;
