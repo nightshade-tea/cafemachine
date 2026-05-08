@@ -1,5 +1,3 @@
-#include "scan.h"
-
 /* TODO  */
 /*
  * test a payload bigger than internal buffer
@@ -7,11 +5,47 @@
  * review dmaoff and totaloff,, check buffered read stuff
  * */
 
-static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
-                                   void *message_data, void *user_data);
+#include "scan.h"
+
+/* types  ------------------------------------------------------------------  */
+
+struct iterator_context {
+    uint8_t new_scan; /* scan_buffer callback aux variable used to know if we
+                         need to start from a new scan from scratch or if we are
+                         continuing a scan  */
+
+    uint8_t valid; /* 0 = consumed (already scanned or just invalid) */
+    uint8_t last;  /* 1 = last block for the scan, don't ask driver for more! */
+    uint8_t *buf;  /* ptr to device internal dma buffer */
+
+    size_t dmaoff;   /* offset inside user buffer */
+    size_t totaloff; /* offset inside scanned file */
+
+    MacchiatoState *dev;
+    YR_MEMORY_BLOCK block;
+};
+
+/* serialization stuff  */
+
+struct machyara_rule {
+    uint64_t serialsz; /* serialized size of this rule */
+    uint8_t matched;   /* zero -> not matched, not zero -> matched */
+    struct machyara_rule *next;
+    char identifier[]; /* rule name string */
+};
+
+struct machyara_scan {
+    uint64_t serialsz; /* serialized size of rule chain (dest buffer size) */
+    struct machyara_rule *head;
+    struct machyara_rule *tail;
+};
+
 static const uint8_t *get_blk_addr(YR_MEMORY_BLOCK *self);
 static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self);
 static YR_MEMORY_BLOCK *get_next_blk(YR_MEMORY_BLOCK_ITERATOR *self);
+
+/* -------------------------------------------------------------------------  */
+/* static variables  -------------------------------------------------------  */
 
 static struct iterator_context iterctx = {.block = {
                                               .context = &iterctx,
@@ -24,24 +58,8 @@ static YR_MEMORY_BLOCK_ITERATOR iterator = {
     .next = get_next_blk,
 };
 
-/* helpers ----------------------------------------------------------------*/
-
-static int setup_scanner(MacchiatoState *dev)
-{
-    if (yr_compiler_get_rules(dev->compiler, &dev->rules)) {
-        macchiato_log("failed to setup scanner: unable to get rules\n");
-        return 1;
-    }
-
-    if (yr_scanner_create(dev->rules, &dev->scanner)) {
-        macchiato_log("failed to setup scanner: unable to create scanner\n");
-        return 1;
-    }
-
-    yr_scanner_set_callback(dev->scanner, macchiato_yara_callback, NULL);
-
-    return 0;
-}
+/* -------------------------------------------------------------------------  */
+/* helpers  ----------------------------------------------------------------  */
 
 static uint8_t fetch_blk(struct iterator_context *ctx)
 {
@@ -210,8 +228,8 @@ static int machyara_serialize(MacchiatoState *dev)
 
 /* callbacks ----------------------------------------------------------------*/
 
-static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
-                                   void *message_data, void *user_data)
+static int scanner_callback(YR_SCAN_CONTEXT *context, int message,
+                            void *message_data, void *user_data)
 {
     const char *identifier = NULL;
     uint8_t matched = 0;
@@ -246,7 +264,7 @@ static int macchiato_yara_callback(YR_SCAN_CONTEXT *context, int message,
 }
 
 /* ask the driver for a block, copy to device's internal buffer via dma, update
- *  * iterator context accordingly */
+ * iterator context accordingly */
 static uint8_t fetch_next_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
@@ -320,22 +338,27 @@ static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self)
     return NULL;
 }
 
+/* okay  */
 static YR_MEMORY_BLOCK *get_next_blk(YR_MEMORY_BLOCK_ITERATOR *self)
 {
     struct iterator_context *ctx = self->context;
 
     macchiato_log("get next block called\n");
+
     if (ctx->valid || (!ctx->last && fetch_next_blk(ctx))) {
         ctx->valid = 0;
+        macchiato_log("get next block returning valid block\n");
         return &ctx->block;
     }
-    macchiato_log("get nextnsetn block returning null\n");
+
+    macchiato_log("get next block returning null\n");
 
     return NULL;
 }
 
 /* operations ---------------------------------------------------------------*/
 
+/* okay  */
 void reset_compiler(MacchiatoState *dev)
 {
     if (dev->compiler) {
@@ -356,75 +379,126 @@ void reset_compiler(MacchiatoState *dev)
 
 void reset_scanner(MacchiatoState *dev)
 {
+
+    /* free stuff  */
+
     if (dev->scanner) {
         yr_scanner_destroy(dev->scanner);
-        machyara_scan_destroy(dev->scan);
+        dev->scanner = NULL;
     }
+
+    if (dev->rules) {
+        yr_rules_destroy(dev->rules);
+        dev->rules = NULL;
+    }
+
+    if (dev->scan) {
+        machyara_scan_destroy(dev->scan);
+        dev->scan = NULL;
+    }
+
+    /* check prerequisites  */
+
+    if (!dev->compiler) {
+        macchiato_log("failed to reset scanner: compiler is null\n");
+        goto err_no_compiler;
+    }
+
+    /* setup stuff */
 
     if (!(dev->scan = machyara_scan_create())) {
         macchiato_log(
-            "failed to reset scanner: unable to allocate machyara struct\n");
-        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+            "failed to reset scanner: unable to allocate results struct\n");
+        goto err_scan_create;
     }
+
+    if (yr_compiler_get_rules(dev->compiler, &dev->rules)) {
+        macchiato_log("failed to setup scanner: unable to get rules\n");
+        goto err_get_rules;
+    }
+
+    if (yr_scanner_create(dev->rules, &dev->scanner)) {
+        macchiato_log("failed to setup scanner: unable to create scanner\n");
+        goto err_scanner_create;
+    }
+
+    yr_scanner_set_callback(dev->scanner, scanner_callback, NULL);
+
+    /* TODO reset iterctx and friends  */
+    iterctx.dev = dev;
+    iterctx.new_scan = 1;
 
     macchiato_log("scanner reset\n");
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
 
     return;
+
+err_scanner_create:
+    yr_rules_destroy(dev->rules);
+    dev->rules = NULL;
+
+err_get_rules:
+    machyara_scan_destroy(dev->scan);
+    dev->scan = NULL;
+
+err_scan_create:
+err_no_compiler:
+
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+    return;
 }
 
+/* okay  */
 void add_rule(MacchiatoState *dev)
 {
     size_t size = dev->reg[MACCHIATO_REG_SIZE];
     hwaddr addr = dev->reg[MACCHIATO_REG_ADDR];
 
     if (macchiato_dma_read(dev, addr, size)) {
-        macchiato_log("failed to add rule: unable to fetch rule\n");
-        goto failed;
+        macchiato_log("failed to add rule: dma read failed\n");
+        goto raise_failed;
     }
 
-    /* dma read ensures enough space */
-    dev->buffer[size] = 0;
+    /* dma read ensures enough space + 1 */
+    dev->buffer[size] = 0; /* null terminator for str  */
 
-    //  macchiato_log("rulestr='%s'\n", (char *)dev->buffer);
+    macchiato_log("rulestr='%s'\n", (char *)dev->buffer);
 
     if (yr_compiler_add_string(dev->compiler, (char *)dev->buffer, NULL)) {
-        macchiato_log("failed to add rule: unable to add string to compiler\n");
-        goto failed;
+        macchiato_log("failed to add rule: yr_compiler_add_string failed\n");
+        goto raise_failed;
     }
 
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
     return;
 
-failed:
+raise_failed:
     macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
     return;
 }
 
+/* TODO won't work with userspace buffered scan  */
 void scan_buffer(MacchiatoState *dev)
 {
-    if (setup_scanner(dev)) {
-        macchiato_log("failed to scan buffer: unable to setup scanner\n");
-        goto failed;
+    if (!iterctx.new_scan) {
+        return;
     }
 
-    iterctx.dev = dev;
+    iterctx.new_scan = 0;
 
-    macchiato_log("aaaaaa1\n");
     if (yr_scanner_scan_mem_blocks(dev->scanner, &iterator)) {
+        iterctx.new_scan = 1;
         macchiato_log("failed to scan buffer: scan failed\n");
-        goto failed;
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+        return;
     }
 
     macchiato_log("scan finished\n");
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
     return;
-
-failed:
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
-    return;
 }
 
+/* okay  */
 void get_results(MacchiatoState *dev)
 {
     if (machyara_serialize(dev) < 0) {
