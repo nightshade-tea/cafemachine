@@ -70,31 +70,35 @@ static inline size_t min_size(size_t a, size_t b)
 static uint8_t fetch_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
-    uint64_t userbuf_sz = dev->reg[MACCHIATO_REG_SIZE];
+    uint64_t ubuf_sz = dev->reg[MACCHIATO_REG_SIZE];
 
     ctx->block.base = ctx->ubuf_off; // not for the whole file
 
     macchiato_log("fetch_blk() :: called!\n");
 
-    /* got to the end of the userbuf, set it and return */
-    if (ctx->file_off >= userbuf_sz) {
+    /* may be good... */
+    // assert(ctx->ubuf_off <= ubuf_sz);
+
+    /* got to the end of the ubuf, set it and return */
+    if (ctx->file_off >= ubuf_sz) {
         ctx->last = 1;
         return ctx->valid = 0;
     }
 
     /* TODO does this happen? */
     /* it shouldnt, added a log */
-    if (ctx->ubuf_off >= MACCHIATO_INTERNAL_BUFFER) {
+    if (ctx->ubuf_off >= MACCHIATO_DEV_BUF_SZ) {
         macchiato_log(
-            "fetch_blk() :: ctx->ubuf_off >= MACCHIATO_INTERNAL_BUFFER BAD!\n");
+            "fetch_blk() :: ctx->ubuf_off >= MACCHIATO_DEV_BUF_SZ BAD!\n");
         return ctx->valid = 0;
     }
 
-    /* how much there is left in the file to read */
-    size_t remaining = userbuf_sz - ctx->file_off;
+    /* how much there is left in the file to read
+     * TODO: review this */
+    uint64_t remaining = ubuf_sz - ctx->file_off;
 
     /* choose to copy as much as possible */
-    ctx->block.size = min_size(remaining, MACCHIATO_INTERNAL_BUFFER);
+    ctx->block.size = min_size(remaining, MACCHIATO_DEV_BUF_SZ);
 
     macchiato_log("fetch_blk() :: ctx=%p\n", ctx);
     macchiato_log("fetch_blk() :: ctx->ubuf_off=%zu\n", ctx->ubuf_off);
@@ -102,6 +106,8 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
 
     /* copy it */
     macchiato_log("fetch_blk() :: starting dma read... \n");
+
+    /* check for fail? */
     macchiato_dma_read(dev, dev->reg[MACCHIATO_REG_ADDR] + ctx->ubuf_off,
                        ctx->block.size);
     macchiato_log("finished dma read!\n");
@@ -134,6 +140,10 @@ static struct machyara_scan *machyara_scan_create(void)
 
 static void machyara_scan_destroy(struct machyara_scan *scan)
 {
+    if (!scan) {
+        return;
+    }
+
     struct machyara_rule *r;
 
     while ((r = scan->head)) {
@@ -222,7 +232,7 @@ static int machyara_serialize(MacchiatoState *dev)
     dest = dev->reg[MACCHIATO_REG_ADDR];
     off = 0;
 
-    /* not enough space in the region */
+    /* not enough space in ubuf */
     if (dev->reg[MACCHIATO_REG_SIZE] < src->serialsz) {
         return -1;
     }
@@ -250,7 +260,8 @@ static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
     const char *identifier = NULL;
     uint8_t matched = 0;
 
-    MacchiatoState *dev = ((struct iterator_context *)ctx->iterator->ctx)->dev;
+    MacchiatoState *dev =
+        ((struct iterator_context *)ctx->iterator->context)->dev;
 
     switch (msg) {
     case CALLBACK_MSG_RULE_MATCHING:
@@ -278,36 +289,43 @@ static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
     return CALLBACK_CONTINUE;
 }
 
-/* ask the driver for a block, copy to device's internal buffer via dma, update
- * iterator context accordingly */
+/* returns  0 if got new user buf
+ *         -EAGAIN if asked for results */
+static int get_next_buf(struct iterator_context *ctx)
+{
+    MacchiatoState *dev = ctx->dev;
+    macchiato_log("get_next_buf() :: asking for a new user buf\n");
+
+    /* report total findings size */
+    dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
+
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BLOCK);
+    wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BLOCK);
+
+    if (dev->reg[MACCHIATO_REG_CMD] == MACCHIATO_OP_GET_RESULTS) {
+        macchiato_log(
+            "get_next_buf() :: user asked for results, returning...\n");
+        return -EAGAIN;
+    }
+
+    macchiato_log("get_next_buf() :: user refilled buffer, ok\n");
+    return 0;
+}
+
+/* ubuf_off aware */
 static uint8_t fetch_next_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
-
     macchiato_log("fetch_next_blk() :: called!\n");
 
-    /* if consumed the whole user buffer ask for more, yumyum :3 */
+    /* if consumed the whole user buffer ask for more */
     if (ctx->ubuf_off >= dev->reg[MACCHIATO_REG_SIZE]) {
-        macchiato_log("fetch_next_blk() :: asking for more :3\n");
-
-        /* report total findings size */
-        dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
-
-        macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BLOCK);
-        wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BLOCK);
-
-        /* if asked for the results, end it all */
-        if (dev->reg[MACCHIATO_REG_CMD] == MACCHIATO_OP_GET_RESULTS) {
+        if (get_next_buf(ctx) < 0) {
+            /* scan done */
             ctx->last = 1;
-            macchiato_log(
-                "fetch_next_blk() :: user asked for results, returning...\n");
             return ctx->valid = 0;
         }
 
-        /* if not, we're not done yet, big man has refilled the buffer
-         * restart the pointer to it */
-        macchiato_log(
-            "fetch_next_blk() :: user refilled buffer! reseting ubuf_off...\n");
         ctx->ubuf_off = 0;
     }
 
@@ -333,7 +351,7 @@ static uint8_t fetch_first_blk(struct iterator_context *ctx)
     }
 
     ctx->ubuf_off = 0; /* go to the start of user buffer */
-    ctx->file_off = 0; /* go to the start of scan */
+    ctx->file_off = 0; /* go to the start of file (scan) */
     macchiato_log(
         "fetch_first_blk() :: reset pointers (file_off & ubuf_off)\n");
 
@@ -373,7 +391,8 @@ static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self)
 {
     /* if we want first, last should not matter
      * if there is no first, fetch returns NULL */
-    ((struct iterator_context *)self->context)->last = 0;
+    struct iterator_context *ctx = self->context;
+    ctx->last = 0;
     return get_blk(self, fetch_first_blk);
 }
 
@@ -403,11 +422,8 @@ void reset_compiler(MacchiatoState *dev)
     return;
 }
 
-void reset_scanner(MacchiatoState *dev)
+static void destroy_scanner(MacchiatoState *dev)
 {
-
-    /* free stuff  */
-
     if (dev->scanner) {
         yr_scanner_destroy(dev->scanner);
         dev->scanner = NULL;
@@ -422,19 +438,24 @@ void reset_scanner(MacchiatoState *dev)
         machyara_scan_destroy(dev->scan);
         dev->scan = NULL;
     }
+}
 
+/* returns 0 if setup ok
+ *        -1 if error, and nothing was done */
+static int setup_scanner(MacchiatoState *dev)
+{
     /* check prerequisites  */
 
     if (!dev->compiler) {
-        macchiato_log("failed to reset scanner: compiler is null\n");
+        macchiato_log("failed to setup scanner: compiler is null\n");
         goto err_no_compiler;
     }
 
-    /* setup stuff */
+    /* create stuff */
 
     if (!(dev->scan = machyara_scan_create())) {
         macchiato_log(
-            "failed to reset scanner: unable to allocate results struct\n");
+            "failed to setup scanner: unable to allocate results struct\n");
         goto err_scan_create;
     }
 
@@ -450,14 +471,7 @@ void reset_scanner(MacchiatoState *dev)
 
     yr_scanner_set_callback(dev->scanner, scanner_callback, NULL);
 
-    /* TODO reset iterctx and friends  */
-    iterctx.dev = dev;
-    iterctx.new_scan = 1;
-
-    macchiato_log("scanner reset\n");
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
-
-    return;
+    return 0;
 
 err_scanner_create:
     yr_rules_destroy(dev->rules);
@@ -471,22 +485,50 @@ err_scan_create:
 err_no_compiler:
 
     macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+    return -1;
+}
+
+/* should return error no? */
+void reset_scanner(MacchiatoState *dev)
+{
+
+    macchiato_log("scanner reset called!\n");
+
+    /* free stuff */
+    destroy_scanner(dev);
+
+    /* setup it back up */
+    if (setup_scanner(dev) < 0) {
+        return;
+    }
+
+    /* reset iterctx and friends */
+    iterctx.dev = dev;
+    iterctx.last = 0;
+    iterctx.valid = 1;
+    iterctx.new_scan = 1;
+    iterctx.ubuf_off = 0;
+    iterctx.file_off = 0;
+
+    macchiato_log("scanner reset\n");
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
+
     return;
 }
 
-/* okay  */
+/* okay */
 void add_rule(MacchiatoState *dev)
 {
-    size_t size = dev->reg[MACCHIATO_REG_SIZE];
-    hwaddr addr = dev->reg[MACCHIATO_REG_ADDR];
+    size_t ubuf_sz = dev->reg[MACCHIATO_REG_SIZE];
+    hwaddr ubuf_addr = dev->reg[MACCHIATO_REG_ADDR];
 
-    if (macchiato_dma_read(dev, addr, size)) {
+    if (macchiato_dma_read(dev, ubuf_addr, ubuf_sz)) {
         macchiato_log("failed to add rule: dma read failed\n");
         goto raise_failed;
     }
 
     /* dma read ensures enough space + 1 */
-    dev->buffer[size] = 0; /* null terminator for str  */
+    dev->buffer[ubuf_sz] = 0; /* null terminator for str */
 
     macchiato_log("rulestr='%s'\n", (char *)dev->buffer);
 

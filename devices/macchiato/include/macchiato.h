@@ -5,7 +5,7 @@
 #define MACCHIATO_HW_NAME "macchiato"
 #define MACCHIATO_VENDOR_ID 0x1ced
 #define MACCHIATO_DEVICE_ID 0x4acc
-#define MACCHIATO_INTERNAL_BUFFER (64 * 1024 * 1024) /* dma buf */
+#define MACCHIATO_DEV_BUF_SZ (64 * 1024 * 1024) /* dma buf */
 
 /* mmio settings */
 enum macchiato_bar_id {

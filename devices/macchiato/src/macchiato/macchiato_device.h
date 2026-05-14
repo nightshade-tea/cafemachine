@@ -40,7 +40,7 @@ typedef struct MacchiatoState {
     bool irq[MACCHIATO_IRQ_CNT];
     pthread_mutex_t irq_locks[MACCHIATO_IRQ_CNT];
 
-    uint8_t buffer[MACCHIATO_INTERNAL_BUFFER];
+    uint8_t buffer[MACCHIATO_DMA_BUF_SZ];
 
 } MacchiatoState;
 
