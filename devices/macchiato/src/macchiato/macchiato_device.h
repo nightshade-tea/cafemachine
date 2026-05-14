@@ -35,6 +35,7 @@ typedef struct MacchiatoState {
     YR_RULES *rules;
     YR_SCANNER *scanner;
     struct machyara_scan *scan;
+    sem_t scan_finished;
 
     /* raised interrupts vector */
     bool irq[MACCHIATO_IRQ_CNT];

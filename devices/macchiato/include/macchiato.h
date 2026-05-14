@@ -32,8 +32,8 @@ enum macchiato_reg {
 enum macchiato_irq {
     MACCHIATO_IRQ_DONE,   /* no error */
     MACCHIATO_IRQ_FAILED, /* error, check status register */
-    MACCHIATO_IRQ_NEXT_BLOCK,
-    MACCHIATO_IRQ_FIRST_BLOCK,
+    MACCHIATO_IRQ_NEXT_BUF,
+    MACCHIATO_IRQ_FIRST_BUF,
     MACCHIATO_IRQ_CNT
 };
 
@@ -58,10 +58,17 @@ enum macchiato_op {
     /* scan user buffer
      *
      * in: addr, size
-     * out: status, size
-     *
-     * obs: size of serialized results is written to size */
-    MACCHIATO_OP_SCAN_BUFFER,
+     * out: status, size */
+    MACCHIATO_OP_BEGIN_SCAN,
+
+    /* next user buffer */
+    MACCHIATO_OP_CONTINUE_SCAN,
+
+    /* first user buffer */
+    MACCHIATO_OP_REWIND_SCAN,
+
+    /* writes serialized results size in reg_size */
+    MACCHIATO_OP_END_SCAN,
 
     /* write serialized results to user buffer
      *
@@ -75,11 +82,17 @@ enum macchiato_op {
 /* correct order of operations:
  *
  * RESET_COMPILER :: once
- * RESET_SCANNER  :: once
  * ADD_RULES      :: n times
- * SCAN_BUFFER    :: n times
- * GET_RESULTS    :: once
  *
+ * RESET_SCANNER  :: once
+ * BEGIN_SCAN     :: once
+ *
+ * CONTINUE_SCAN
+ * or
+ * REWIND_SCAN    :: n times
+ *
+ * END_SCAN       :: once
+ * GET_RESULTS    :: once
  */
 
 #ifdef __KERNEL__

@@ -10,9 +10,6 @@
 /* types  ------------------------------------------------------------------  */
 
 struct iterator_context {
-    uint8_t new_scan; /* scan_buffer callback aux variable used to know if we
-                         need to start from a new scan from scratch or if we are
-                         continuing a scan  */
 
     uint8_t valid; /* 0 = consumed (already scanned or just invalid) */
     uint8_t last;  /* 1 = last block for the scan, don't ask driver for more! */
@@ -72,30 +69,19 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
     MacchiatoState *dev = ctx->dev;
     uint64_t ubuf_sz = dev->reg[MACCHIATO_REG_SIZE];
 
-    ctx->block.base = ctx->ubuf_off; // not for the whole file
+    ctx->block.base = ctx->file_off;
 
     macchiato_log("fetch_blk() :: called!\n");
 
-    /* may be good... */
-    // assert(ctx->ubuf_off <= ubuf_sz);
-
     /* got to the end of the ubuf, set it and return */
-    if (ctx->file_off >= ubuf_sz) {
+    if (ctx->ubuf_off >= ubuf_sz) {
         ctx->last = 1;
-        return ctx->valid = 0;
-    }
-
-    /* TODO does this happen? */
-    /* it shouldnt, added a log */
-    if (ctx->ubuf_off >= MACCHIATO_DEV_BUF_SZ) {
-        macchiato_log(
-            "fetch_blk() :: ctx->ubuf_off >= MACCHIATO_DEV_BUF_SZ BAD!\n");
         return ctx->valid = 0;
     }
 
     /* how much there is left in the file to read
      * TODO: review this */
-    uint64_t remaining = ubuf_sz - ctx->file_off;
+    uint64_t remaining = ubuf_sz - ctx->ubuf_off;
 
     /* choose to copy as much as possible */
     ctx->block.size = min_size(remaining, MACCHIATO_DEV_BUF_SZ);
@@ -273,6 +259,7 @@ static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
+        sem_post(&dev->scan_finished);
         macchiato_log("scan finished!\n");
         break;
 
@@ -290,26 +277,30 @@ static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
 }
 
 /* returns  0 if got new user buf
- *         -EAGAIN if asked for results */
+ *          ESHUTDOWN if asked for results
+ *         -EINVAL if received cmd is not supported */
 static int get_next_buf(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
     macchiato_log("get_next_buf() :: asking for a new user buf\n");
 
-    /* report total findings size */
-    dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
-
     macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BLOCK);
     wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BLOCK);
 
-    if (dev->reg[MACCHIATO_REG_CMD] == MACCHIATO_OP_GET_RESULTS) {
-        macchiato_log(
-            "get_next_buf() :: user asked for results, returning...\n");
-        return -EAGAIN;
-    }
+    switch (dev->reg[MACCHIATO_REG_CMD]) {
+    case MACCHIATO_OP_CONTINUE_SCAN:
+        macchiato_log("get_next_buf() :: user refilled buffer, ok\n");
+        return 0;
 
-    macchiato_log("get_next_buf() :: user refilled buffer, ok\n");
-    return 0;
+    case MACCHIATO_OP_END_SCAN:
+        macchiato_log("get_next_buf() :: user asked for end, returning...\n");
+        return -ESHUTDOWN;
+
+    default:
+        macchiato_log("get_next_buf() :: user called invalid cmd...\n");
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+        return -EINVAL;
+    }
 }
 
 /* ubuf_off aware */
@@ -329,8 +320,37 @@ static uint8_t fetch_next_blk(struct iterator_context *ctx)
         ctx->ubuf_off = 0;
     }
 
-    macchiato_log("fetch_next_blk() :: fetching block and returning it...\n");
+    macchiato_log("fetch_next_blk() :: fetching block...\n");
+
+    // if (fetch_blk(ctx)) {
+    //
+    // }
+
     return fetch_blk(ctx);
+}
+
+static int get_first_buf(struct iterator_context *ctx)
+{
+    MacchiatoState *dev = ctx->dev;
+    macchiato_log("get_first_buf() :: asking for a new user buf\n");
+
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_FIRST_BUF);
+    wait_for_irq(dev, MACCHIATO_IRQ_FIRST_BUF);
+
+    switch (dev->reg[MACCHIATO_REG_CMD]) {
+    case MACCHIATO_OP_REWIND_SCAN:
+        macchiato_log("get_first_buf() :: user rewinded buf, nice!\n");
+        return 0;
+
+    case MACCHIATO_OP_END_SCAN:
+        macchiato_log("get_first_buf() :: user asked for end, returning...\n");
+        return -ESHUTDOWN;
+
+    default:
+        macchiato_log("get_first_buf() :: user called invalid cmd...\n");
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
+        return -EINVAL;
+    }
 }
 
 /* ask the driver for a block, copy to device's internal buffer via dma, update
@@ -341,19 +361,17 @@ static uint8_t fetch_first_blk(struct iterator_context *ctx)
 
     macchiato_log("fetch_first_blk() :: called!\n");
 
-    /* if not on the first block ask for it */
-    if (ctx->file_off > 0) {
-        /* report total findings size */
-        dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
-
-        macchiato_irq_raise(dev, MACCHIATO_IRQ_FIRST_BLOCK);
-        wait_for_irq(dev, MACCHIATO_IRQ_FIRST_BLOCK);
+    /* if not on the first ubuf ask for it */
+    if (ctx->file_off > ctx->ubuf_off) {
+        if (get_next_buf(ctx) < 0) {
+            /* scan done */
+            ctx->last = 1;
+            return ctx->valid = 0;
+        }
     }
 
     ctx->ubuf_off = 0; /* go to the start of user buffer */
     ctx->file_off = 0; /* go to the start of file (scan) */
-    macchiato_log(
-        "fetch_first_blk() :: reset pointers (file_off & ubuf_off)\n");
 
     macchiato_log("fetch_first_blk() :: fetching block and returning it...\n");
     return fetch_blk(ctx);
@@ -403,7 +421,6 @@ static YR_MEMORY_BLOCK *get_next_blk(YR_MEMORY_BLOCK_ITERATOR *self)
 
 /* operations ---------------------------------------------------------------*/
 
-/* okay */
 void reset_compiler(MacchiatoState *dev)
 {
     if (dev->compiler) {
@@ -488,7 +505,6 @@ err_no_compiler:
     return -1;
 }
 
-/* should return error no? */
 void reset_scanner(MacchiatoState *dev)
 {
 
@@ -499,6 +515,7 @@ void reset_scanner(MacchiatoState *dev)
 
     /* setup it back up */
     if (setup_scanner(dev) < 0) {
+        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return;
     }
 
@@ -545,35 +562,40 @@ raise_failed:
     return;
 }
 
-/* TODO won't work with userspace buffered scan */
-void scan_buffer(MacchiatoState *dev)
+void begin_scan(MacchiatoState *dev)
 {
-    if (!iterctx.new_scan) {
-        return;
-    }
+    int err;
 
-    iterctx.new_scan = 0;
-
-    if (yr_scanner_scan_mem_blocks(dev->scanner, &iterator)) {
-        iterctx.new_scan = 1;
-        macchiato_log("failed to scan buffer: scan failed\n");
+    if ((err = yr_scanner_scan_mem_blocks(dev->scanner, &iterator))) {
+        macchiato_log(
+            "failed to scan buffer: yr_scanner_scan_mem_blocks failed err=%d\n",
+            err);
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return;
     }
 
-    macchiato_log("scan finished\n");
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
-    return;
+    macchiato_log(
+        "scan finished :: yr_scanner_scan_mem_blocks returned success\n");
 }
 
-/* okay */
+void end_scan(MacchiatoState *dev)
+{
+    macchiato_log("end_scan() :: waiting for mutex\n");
+    sem_wait(&dev->scan_finished);
+    dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
+    macchiato_log("end_scan() :: done\n");
+}
+
 void get_results(MacchiatoState *dev)
 {
+    macchiato_log("get_results() :: called\n");
     if (machyara_serialize(dev) < 0) {
-        macchiato_log("failed serialize results: dont fit\n");
+        macchiato_log("get_results() :: failed serialize results: dont fit\n");
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return;
     }
 
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
+    macchiato_log("get_results() :: done\n");
 }

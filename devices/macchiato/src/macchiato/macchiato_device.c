@@ -11,6 +11,8 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 {
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
 
+    sem_init(&dev->scan_finished, 0);
+
     /* set pci express capability on pci configuration space */
     if (pci_bus_is_express(pci_get_bus(pci_dev)) &&
         pcie_endpoint_cap_init(pci_dev, 0) >= 0) {
