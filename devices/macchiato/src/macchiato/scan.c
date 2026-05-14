@@ -2,7 +2,7 @@
 /*
  * test a payload bigger than internal buffer
  *
- * review dmaoff and totaloff,, check buffered read stuff
+ * new ops
  * */
 
 #include "scan.h"
@@ -18,8 +18,9 @@ struct iterator_context {
     uint8_t last;  /* 1 = last block for the scan, don't ask driver for more! */
     uint8_t *buf;  /* ptr to device internal dma buffer */
 
-    size_t dmaoff;   /* offset inside user buffer */
-    size_t totaloff; /* offset inside scanned file */
+    /* no need for dbuf_off because its always consumed whole */
+    size_t ubuf_off; /* offset inside user buffer */
+    size_t file_off; /* offset inside scanned file */
 
     MacchiatoState *dev;
     YR_MEMORY_BLOCK block;
@@ -61,49 +62,58 @@ static YR_MEMORY_BLOCK_ITERATOR iterator = {
 /* -------------------------------------------------------------------------  */
 /* helpers  ----------------------------------------------------------------  */
 
+static inline size_t min_size(size_t a, size_t b)
+{
+    return (a < b) ? a : b;
+}
+
 static uint8_t fetch_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
-    ctx->block.base = ctx->dmaoff; // not for the whole file
+    uint64_t userbuf_sz = dev->reg[MACCHIATO_REG_SIZE];
 
-    macchiato_log("fetch_blk() ...\n");
+    ctx->block.base = ctx->ubuf_off; // not for the whole file
 
-    if (ctx->totaloff >= dev->reg[MACCHIATO_REG_SIZE]) {
+    macchiato_log("fetch_blk() :: called!\n");
+
+    /* got to the end of the userbuf, set it and return */
+    if (ctx->file_off >= userbuf_sz) {
         ctx->last = 1;
         return ctx->valid = 0;
     }
 
-    /* TODO does this happen?  */
-    if (ctx->dmaoff >= MACCHIATO_INTERNAL_BUFFER) {
+    /* TODO does this happen? */
+    /* it shouldnt, added a log */
+    if (ctx->ubuf_off >= MACCHIATO_INTERNAL_BUFFER) {
+        macchiato_log(
+            "fetch_blk() :: ctx->ubuf_off >= MACCHIATO_INTERNAL_BUFFER BAD!\n");
         return ctx->valid = 0;
     }
 
-    // figure out how much to copy
-    if (dev->reg[MACCHIATO_REG_SIZE] - ctx->totaloff <
-        MACCHIATO_INTERNAL_BUFFER) {
-        ctx->block.size = dev->reg[MACCHIATO_REG_SIZE] - ctx->dmaoff;
-    } else {
-        ctx->block.size = MACCHIATO_INTERNAL_BUFFER;
-    }
+    /* how much there is left in the file to read */
+    size_t remaining = userbuf_sz - ctx->file_off;
+
+    /* choose to copy as much as possible */
+    ctx->block.size = min_size(remaining, MACCHIATO_INTERNAL_BUFFER);
 
     macchiato_log("fetch_blk() :: ctx=%p\n", ctx);
-    macchiato_log("fetch_blk() :: ctx->dmaoff=%zu\n", ctx->dmaoff);
+    macchiato_log("fetch_blk() :: ctx->ubuf_off=%zu\n", ctx->ubuf_off);
     macchiato_log("fetch_blk() :: ctx->block.size=%zu\n", ctx->block.size);
 
-    // copy
+    /* copy it */
     macchiato_log("fetch_blk() :: starting dma read... \n");
-    macchiato_dma_read(dev, dev->reg[MACCHIATO_REG_ADDR] + ctx->dmaoff,
+    macchiato_dma_read(dev, dev->reg[MACCHIATO_REG_ADDR] + ctx->ubuf_off,
                        ctx->block.size);
-    macchiato_log("done\n");
+    macchiato_log("finished dma read!\n");
 
-    ctx->dmaoff += ctx->block.size;
-    ctx->totaloff += ctx->block.size;
+    /* advance the pointers */
+    ctx->ubuf_off += ctx->block.size;
+    ctx->file_off += ctx->block.size;
 
     ctx->valid = 1;
     ctx->buf = dev->buffer;
 
-    macchiato_log("fetch_blk() :: returning a valid block\n");
-
+    macchiato_log("fetch_blk() :: returning valid block\n");
     return ctx->valid;
 }
 
@@ -183,6 +193,7 @@ static size_t write_serialized_scan(MacchiatoState *dev, hwaddr dest,
     return sizeof src->serialsz;
 }
 
+// T: what else will it return? need this comment? should error handle? faith?
 /* caller: check if return value is equal to src->serialsz */
 static size_t write_serialized_rule(MacchiatoState *dev, hwaddr dest,
                                     struct machyara_rule *src)
@@ -211,15 +222,20 @@ static int machyara_serialize(MacchiatoState *dev)
     dest = dev->reg[MACCHIATO_REG_ADDR];
     off = 0;
 
+    /* not enough space in the region */
     if (dev->reg[MACCHIATO_REG_SIZE] < src->serialsz) {
         return -1;
     }
 
-    off += write_serialized_scan(dev, dest + off, src);
+    /* write the linked list "head" (scan) */
+    off += write_serialized_scan(dev, dest, src);
     r = src->head;
 
     while (r && off + r->serialsz <= src->serialsz) {
+        /* write a component of the list (rule) */
         off += write_serialized_rule(dev, dest + off, r);
+
+        /* go for the next */
         r = r->next;
     }
 
@@ -228,30 +244,29 @@ static int machyara_serialize(MacchiatoState *dev)
 
 /* callbacks ----------------------------------------------------------------*/
 
-static int scanner_callback(YR_SCAN_CONTEXT *context, int message,
-                            void *message_data, void *user_data)
+static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
+                            void *user_data)
 {
     const char *identifier = NULL;
     uint8_t matched = 0;
 
-    MacchiatoState *dev =
-        ((struct iterator_context *)context->iterator->context)->dev;
+    MacchiatoState *dev = ((struct iterator_context *)ctx->iterator->ctx)->dev;
 
-    switch (message) {
+    switch (msg) {
     case CALLBACK_MSG_RULE_MATCHING:
         matched = 1;
         /* fall through */
 
     case CALLBACK_MSG_RULE_NOT_MATCHING:
-        identifier = ((YR_RULE *)message_data)->identifier;
+        identifier = ((YR_RULE *)msg_data)->identifier;
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
-        macchiato_log("scan finished\n");
+        macchiato_log("scan finished!\n");
         break;
 
     case CALLBACK_MSG_CONSOLE_LOG:
-        macchiato_log("console log: %s\n", (char *)message_data);
+        macchiato_log("console log: %s\n", (char *)msg_data);
         break;
     }
 
@@ -269,50 +284,60 @@ static uint8_t fetch_next_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
 
-    macchiato_log("fetch nextblock called\n");
-    // if consumed the whole user buffer ask for more
-    if (ctx->dmaoff >= dev->reg[MACCHIATO_REG_SIZE]) {
+    macchiato_log("fetch_next_blk() :: called!\n");
 
-        // report total findings size
+    /* if consumed the whole user buffer ask for more, yumyum :3 */
+    if (ctx->ubuf_off >= dev->reg[MACCHIATO_REG_SIZE]) {
+        macchiato_log("fetch_next_blk() :: asking for more :3\n");
+
+        /* report total findings size */
         dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
 
         macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BLOCK);
         wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BLOCK);
 
-        // check if continue scan or return results
+        /* if asked for the results, end it all */
         if (dev->reg[MACCHIATO_REG_CMD] == MACCHIATO_OP_GET_RESULTS) {
-            ctx->valid = 0;
             ctx->last = 1;
-            return ctx->valid;
+            macchiato_log(
+                "fetch_next_blk() :: user asked for results, returning...\n");
+            return ctx->valid = 0;
         }
 
-        ctx->dmaoff = 0; // go to the beggining of user buffer
+        /* if not, we're not done yet, big man has refilled the buffer
+         * restart the pointer to it */
+        macchiato_log(
+            "fetch_next_blk() :: user refilled buffer! reseting ubuf_off...\n");
+        ctx->ubuf_off = 0;
     }
 
-    macchiato_log("fetch next block returnidndnidn\n");
+    macchiato_log("fetch_next_blk() :: fetching block and returning it...\n");
     return fetch_blk(ctx);
 }
 
 /* ask the driver for a block, copy to device's internal buffer via dma, update
- *  * iterator context accordingly */
+ * iterator context accordingly */
 static uint8_t fetch_first_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
 
-    macchiato_log("fetch first block called\n");
-    /*if  not on  the first blk fetch it */
-    if (ctx->totaloff >= dev->reg[MACCHIATO_REG_SIZE]) {
-        // report total findings size
+    macchiato_log("fetch_first_blk() :: called!\n");
+
+    /* if not on the first block ask for it */
+    if (ctx->file_off > 0) {
+        /* report total findings size */
         dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
 
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FIRST_BLOCK);
         wait_for_irq(dev, MACCHIATO_IRQ_FIRST_BLOCK);
     }
 
-    ctx->dmaoff = 0;   // go to the beggining of user buffer
-    ctx->totaloff = 0; // go to the beggining of scan
+    ctx->ubuf_off = 0; /* go to the start of user buffer */
+    ctx->file_off = 0; /* go to the start of scan */
+    macchiato_log(
+        "fetch_first_blk() :: reset pointers (file_off & ubuf_off)\n");
 
-    macchiato_log("fetch first block returnidndnidn\n");
+    macchiato_log("fetch_first_blk() :: fetching block and returning it...\n");
     return fetch_blk(ctx);
 }
 
@@ -323,42 +348,43 @@ static const uint8_t *get_blk_addr(YR_MEMORY_BLOCK *self)
     return ctx->buf;
 }
 
-static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self)
+static YR_MEMORY_BLOCK *get_blk(YR_MEMORY_BLOCK_ITERATOR *self,
+                                uint8_t (*fetch)(struct iterator_context *))
 {
     struct iterator_context *ctx = self->context;
 
-    macchiato_log("get first block called\n");
+    /* there was a if here checking if ctx->valid and returning it
+     * do we want that? it also should never happen, so removed it. */
 
-    if (ctx->valid || (!ctx->last && fetch_first_blk(ctx))) {
-        ctx->valid = 0;
-        return &ctx->block;
+    if (!ctx->last) {
+        uint8_t got_valid = fetch(ctx);
+        if (got_valid) {
+            ctx->valid = 0;
+            return &ctx->block;
+        }
     }
-    macchiato_log("get first block returning null\n");
 
+    /* if current is not valid nor the last, there
+     * are no more blocks to get, so just return NULL */
     return NULL;
 }
 
-/* okay  */
+static YR_MEMORY_BLOCK *get_first_blk(YR_MEMORY_BLOCK_ITERATOR *self)
+{
+    /* if we want first, last should not matter
+     * if there is no first, fetch returns NULL */
+    ((struct iterator_context *)self->context)->last = 0;
+    return get_blk(self, fetch_first_blk);
+}
+
 static YR_MEMORY_BLOCK *get_next_blk(YR_MEMORY_BLOCK_ITERATOR *self)
 {
-    struct iterator_context *ctx = self->context;
-
-    macchiato_log("get next block called\n");
-
-    if (ctx->valid || (!ctx->last && fetch_next_blk(ctx))) {
-        ctx->valid = 0;
-        macchiato_log("get next block returning valid block\n");
-        return &ctx->block;
-    }
-
-    macchiato_log("get next block returning null\n");
-
-    return NULL;
+    return get_blk(self, fetch_next_blk);
 }
 
 /* operations ---------------------------------------------------------------*/
 
-/* okay  */
+/* okay */
 void reset_compiler(MacchiatoState *dev)
 {
     if (dev->compiler) {
@@ -477,7 +503,7 @@ raise_failed:
     return;
 }
 
-/* TODO won't work with userspace buffered scan  */
+/* TODO won't work with userspace buffered scan */
 void scan_buffer(MacchiatoState *dev)
 {
     if (!iterctx.new_scan) {
@@ -498,7 +524,7 @@ void scan_buffer(MacchiatoState *dev)
     return;
 }
 
-/* okay  */
+/* okay */
 void get_results(MacchiatoState *dev)
 {
     if (machyara_serialize(dev) < 0) {
