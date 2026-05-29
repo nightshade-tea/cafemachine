@@ -12,18 +12,28 @@ int macchiato_mmio_enable(struct pci_dev *pdev);
 
 void macchiato_mmio_disable(struct pci_dev *pdev);
 
+static inline u64 macchiato_reg_read_d(struct macchiato_dev_data *data,
+				       enum macchiato_reg reg)
+{
+	return readq((char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio + reg * 8);
+}
+
+static inline void macchiato_reg_write_d(struct macchiato_dev_data *data,
+					 enum macchiato_reg reg, u64 val)
+{
+	writeq(val, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio + reg * 8);
+}
+
 static inline u64 macchiato_reg_read(struct pci_dev *pdev,
 				     enum macchiato_reg reg)
 {
-	struct macchiato_dev_data *data = pci_get_drvdata(pdev);
-	return readq(data->bar[MACCHIATO_BAR_ID_CTL].mmio + reg * 8);
+	return macchiato_reg_read_d(pci_get_drvdata(pdev), reg);
 }
 
 static inline void macchiato_reg_write(struct pci_dev *pdev,
 				       enum macchiato_reg reg, u64 val)
 {
-	struct macchiato_dev_data *data = pci_get_drvdata(pdev);
-	writeq(val, data->bar[MACCHIATO_BAR_ID_CTL].mmio + reg * 8);
+	macchiato_reg_write_d(pci_get_drvdata(pdev), reg, val);
 }
 
 #endif /* _MACCHIATO_MMIO_H_ */

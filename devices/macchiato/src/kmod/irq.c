@@ -40,21 +40,21 @@ static irqreturn_t failed_handler(int irq, void *opaque)
 	return sync_handler(MACCHIATO_IRQ_FAILED, opaque);
 }
 
-static irqreturn_t next_block_handler(int irq, void *opaque)
+static irqreturn_t next_buf_handler(int irq, void *opaque)
 {
-	return sync_handler(MACCHIATO_IRQ_NEXT_BLOCK, opaque);
+	return sync_handler(MACCHIATO_IRQ_NEXT_BUF, opaque);
 }
 
-static irqreturn_t first_block_handler(int irq, void *opaque)
+static irqreturn_t first_buf_handler(int irq, void *opaque)
 {
-	return sync_handler(MACCHIATO_IRQ_FIRST_BLOCK, opaque);
+	return sync_handler(MACCHIATO_IRQ_FIRST_BUF, opaque);
 }
 
 static const irq_handler_t handlers[MACCHIATO_IRQ_CNT] = {
 	[MACCHIATO_IRQ_DONE] = done_handler,
 	[MACCHIATO_IRQ_FAILED] = failed_handler,
-	[MACCHIATO_IRQ_NEXT_BLOCK] = next_block_handler,
-	[MACCHIATO_IRQ_FIRST_BLOCK] = first_block_handler,
+	[MACCHIATO_IRQ_NEXT_BUF] = next_buf_handler,
+	[MACCHIATO_IRQ_FIRST_BUF] = first_buf_handler,
 };
 
 int macchiato_irq_enable(struct pci_dev *pdev)

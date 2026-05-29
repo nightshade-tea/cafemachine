@@ -13,36 +13,33 @@ static inline struct pci_dev *minor_pdev(int minor)
 	return xa_load(&minors_xa, minor);
 }
 
+static inline long send_cmd(char *func, macchiato_dev_data *data,
+			    enum macchiato_op op)
+{
+	printk("%s(): reinit_completion()...\n", func);
+	reinit_completion(&data->sync);
+
+	printk("%s(): sending command...\n", func);
+	macchiato_reg_write_d(data, MACCHIATO_REG_CMD, op);
+
+	printk("%s(): waiting for completion...\n", func);
+	wait_for_completion(&data->sync);
+
+	return data->last_hwirq;
+}
+
 /* -------------------------------------------------------------------------- */
 
 static long reset_compiler(struct macchiato_dev_data *data)
 {
-	printk("reset_compiler(): reinit_completion()...\n");
-	reinit_completion(&data->sync);
-	printk("reset_compiler(): sending command...\n");
-	writeq(MACCHIATO_OP_RESET_COMPILER,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_CMD * 8);
-
-	printk("reset_compiler(): waiting for completion...\n");
-	wait_for_completion(&data->sync);
-
+	send_cmd("reset_compiler", data, MACCHIATO_OP_RESET_COMPILER);
 	printk("reset_compiler(): done!\n");
 	return 0;
 }
 
 static long reset_scanner(struct macchiato_dev_data *data)
 {
-	printk("reset_scanner(): reinit_completion()...\n");
-	reinit_completion(&data->sync);
-	printk("reset_scanner(): sending command...\n");
-	writeq(MACCHIATO_OP_RESET_SCANNER,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_CMD * 8);
-
-	printk("reset_scanner(): waiting for completion...\n");
-	wait_for_completion(&data->sync);
-
+	send_cmd("reset_scanner", data, MACCHIATO_OP_RESET_SCANNER);
 	printk("reset_scanner(): done!\n");
 	return 0;
 }
@@ -105,22 +102,11 @@ static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 	if (arg > data->dmabuf.size)
 		return -EINVAL;
 
-	writeq(data->dmabuf.paddr,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_ADDR * 8);
-	writeq(arg, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-			    MACCHIATO_REG_SIZE * 8);
+	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
+	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
 
-	printk("add_rules(): reinit_completion()...\n");
-	reinit_completion(&data->sync);
-	printk("add_rules(): sending command...\n");
-	writeq(MACCHIATO_OP_ADD_RULE,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_CMD * 8);
-	printk("add_rules(): waiting for completion...\n");
-	wait_for_completion(&data->sync);
-
-	if (data->last_hwirq == MACCHIATO_IRQ_FAILED)
+	if (send_cmd("add_rules", data, MACCHIATO_OP_ADD_RULE) ==
+	    MACCHIATO_IRQ_FAILED)
 		return -ENOSPC; /* just want an unique errno so i can track it
 				   without printing stuff  */
 
@@ -137,40 +123,20 @@ static long scan_buffer(struct macchiato_dev_data *data, unsigned long arg)
 	if (arg > data->dmabuf.size)
 		return -EINVAL;
 
-	writeq(data->dmabuf.paddr,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_ADDR * 8);
-	writeq(arg, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-			    MACCHIATO_REG_SIZE * 8);
+	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
+	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
 
-	printk("scan_buffer(): reinit_completion()...\n");
-	reinit_completion(&data->sync);
-	printk("scan_buffer(): sending command...\n");
-	writeq(MACCHIATO_OP_SCAN_BUFFER,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_CMD * 8);
-	printk("scan_buffer(): waiting for completion...\n");
-	wait_for_completion(&data->sync);
-	printk("WAIT FOR COMPLETION DONE\n");
-
-	switch (data->last_hwirq) {
+	switch (send_cmd("scan_buffer", data, MACCHIATO_OP_SCAN_BUFFER)) {
 	case MACCHIATO_IRQ_FAILED:
 		return -ENOSPC;
 
-	case MACCHIATO_IRQ_FIRST_BLOCK:
+	case MACCHIATO_IRQ_FIRST_BUF:
 		return -EAGAIN;
 	}
 
 	printk("scan_buffer(): done!\n");
 	return 0;
 }
-
-/*
-static long get_serialsz(struct macchiato_dev_data *data) {
-  return readq((char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-      MACCHIATO_REG_SIZE * 8);
-}
-*/
 
 static long get_results(struct macchiato_dev_data *data)
 {
@@ -179,28 +145,16 @@ static long get_results(struct macchiato_dev_data *data)
 	if (!data->dmabuf.size)
 		return -EFAULT;
 
-	serialsz = readq((char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-			 MACCHIATO_REG_SIZE * 8);
+	serialsz = macchiato_reg_read_d(data, MACCHIATO_REG_SIZE);
 
 	if (data->dmabuf.size < serialsz)
 		return -ENOSPC;
 
-	writeq(data->dmabuf.paddr,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_ADDR * 8);
-	writeq(data->dmabuf.size, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-					  MACCHIATO_REG_SIZE * 8);
+	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
+	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, data->dmabuf.size);
 
-	printk("get_results(): reinit_completion()...\n");
-	reinit_completion(&data->sync);
-	printk("get_results(): sending command...\n");
-	writeq(MACCHIATO_OP_GET_RESULTS,
-	       (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-		       MACCHIATO_REG_CMD * 8);
-	printk("get_results(): waiting for completion...\n");
-	wait_for_completion(&data->sync);
-
-	if (data->last_hwirq == MACCHIATO_IRQ_FAILED)
+	if (send_cmd("get_results", data, MACCHIATO_OP_GET_RESULTS) ==
+	    MACCHIATO_IRQ_FAILED)
 		return -ENOSPC;
 
 	printk("get_results(): done!\n");
@@ -262,7 +216,7 @@ static ssize_t write(struct file *file, const char __user *ubuf, size_t size,
     case MACCHIATO_IRQ_FAILED:
       return -EINVAL;
 
-    case MACCHIATO_IRQ_FIRST_BLOCK:
+    case MACCHIATO_IRQ_FIRST_BUF:
       return -EAGAIN;
   }
 
