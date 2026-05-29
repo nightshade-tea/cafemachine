@@ -6,6 +6,7 @@ yara_dep = dependency('yara', required: true)
      'mmio.c',
      'irq.c',
      'dma.c',
+     'serialize.c',
      'scan.c',
      ),
    yara_dep

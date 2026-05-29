@@ -8,9 +8,7 @@
 /* handler for all device operations triggered by writing to MACCHIATO_CMD */
 static void macchiato_cmd(MacchiatoState *dev)
 {
-
     macchiato_log("got %#" PRIx64 " command\n", dev->reg[MACCHIATO_REG_CMD]);
-
     switch (dev->reg[MACCHIATO_REG_CMD]) {
     case MACCHIATO_OP_RESET_COMPILER:
         reset_compiler(dev);
@@ -21,11 +19,18 @@ static void macchiato_cmd(MacchiatoState *dev)
     case MACCHIATO_OP_ADD_RULE:
         add_rule(dev);
         break;
-    case MACCHIATO_OP_SCAN_BUFFER:
-        scan_buffer(dev);
+    case MACCHIATO_OP_BEGIN_SCAN:
+        begin_scan(dev);
+        break;
+    case MACCHIATO_OP_END_SCAN:
+        end_scan(dev);
         break;
     case MACCHIATO_OP_GET_RESULTS:
         get_results(dev);
+        break;
+    case MACCHIATO_OP_CONTINUE_SCAN:
+    case MACCHIATO_OP_REWIND_SCAN:
+        /* just signals a unlock to the blocked thread, no handling */
         break;
     }
 }
