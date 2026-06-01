@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
   int fd, s;
 
   if (argc != 2) {
-    fprintf(stderr, "%s\n", strerror(EINVAL));
+    fprintf(stderr, "usage: %s <secs>\n", argv[0]);
     return EINVAL;
   }
 
-  if ((fd = open("/dev/macchiato0", 0)) < 0) {
+  if ((fd = open("/dev/macchiato0", O_RDONLY)) < 0) {
     perror("open () :");
     return errno;
   }
