@@ -1,5 +1,3 @@
-/* Test chardev open () / release () locking mechanism (MACCHIATO_LOCK_FD)  */
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
