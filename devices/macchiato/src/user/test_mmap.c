@@ -10,7 +10,7 @@
 int main(void) {
   int fd;
   char *buf;
-  size_t size = 4096; // 1 page
+  size_t size = 4096;
 
   if ((fd = open("/dev/macchiato0", O_RDWR)) < 0) {
     perror("open");
@@ -23,21 +23,30 @@ int main(void) {
     close(fd);
     return 1;
   }
+  printf("[+] mmap ok at %p (size=%zu)\n", buf, size);
 
-  printf("[+] mmap successful at %p\n", buf);
+  const char *msg = "DMA memory mapping test successful.";
+  strcpy(buf, msg);
+  if (strcmp(buf, msg) == 0)
+    printf("[+] read/write to DMA buffer ok\n");
+  else
+    printf("[-] read/write to DMA buffer FAILED\n");
 
-  // Test page access
-  strcpy(buf, "DMA memory mapping test successful.");
-  printf("[+] readback: %s\n", buf);
-
-  // Test simple ioctl
-  if (ioctl(fd, MACCHIATO_OP_RESET_COMPILER, 0) < 0) {
-    perror("ioctl RESET_COMPILER");
-  } else {
-    printf("[+] RESET_COMPILER ioctl successful\n");
+  if (ioctl(fd, MACCHIATO_IOC_RESET_COMPILER, 0) < 0) {
+    perror("[-] RESET_COMPILER");
+    close(fd);
+    return 1;
   }
+  printf("[+] RESET_COMPILER ok\n");
 
-  // Rely on your release() function to do the unmap and free
+  if (ioctl(fd, MACCHIATO_IOC_RESET_SCANNER, 0) < 0) {
+    perror("[-] RESET_SCANNER");
+    close(fd);
+    return 1;
+  }
+  printf("[+] RESET_SCANNER ok\n");
+
+  /* release() frees dmabuf, no munmap */
   close(fd);
   printf("[+] fd closed, hardware lock released\n");
   return 0;
