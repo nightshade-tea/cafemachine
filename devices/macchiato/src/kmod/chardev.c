@@ -1,6 +1,7 @@
 #include "chardev.h"
 #include "data.h"
 #include "macchiato.h"
+#include "mmio.h"
 #include <linux/cdev.h>
 #include <linux/fs.h>
 
@@ -13,8 +14,10 @@ static inline struct pci_dev *minor_pdev(int minor)
 	return xa_load(&minors_xa, minor);
 }
 
-static inline long send_cmd(char *func, macchiato_dev_data *data,
-			    enum macchiato_op op)
+#define send_cmd(data, op) (send_cmd)(__func__, data, op)
+
+static inline long(send_cmd)(const char *func, struct macchiato_dev_data *data,
+			     enum macchiato_op op)
 {
 	printk("%s(): reinit_completion()...\n", func);
 	reinit_completion(&data->sync);
@@ -32,15 +35,22 @@ static inline long send_cmd(char *func, macchiato_dev_data *data,
 
 static long reset_compiler(struct macchiato_dev_data *data)
 {
-	send_cmd("reset_compiler", data, MACCHIATO_OP_RESET_COMPILER);
+	send_cmd(data, MACCHIATO_OP_RESET_COMPILER);
 	printk("reset_compiler(): done!\n");
 	return 0;
 }
 
 static long reset_scanner(struct macchiato_dev_data *data)
 {
-	send_cmd("reset_scanner", data, MACCHIATO_OP_RESET_SCANNER);
+	send_cmd(data, MACCHIATO_OP_RESET_SCANNER);
 	printk("reset_scanner(): done!\n");
+	return 0;
+}
+
+static long end_scan(struct macchiato_dev_data *data)
+{
+	send_cmd(data, MACCHIATO_OP_END_SCAN);
+	printk("end_scan(): done!\n");
 	return 0;
 }
 
@@ -105,8 +115,7 @@ static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
 	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
 
-	if (send_cmd("add_rules", data, MACCHIATO_OP_ADD_RULE) ==
-	    MACCHIATO_IRQ_FAILED)
+	if (send_cmd(data, MACCHIATO_OP_ADD_RULE) == MACCHIATO_IRQ_FAILED)
 		return -ENOSPC; /* just want an unique errno so i can track it
 				   without printing stuff  */
 
@@ -114,8 +123,11 @@ static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 	return 0;
 }
 
-static long scan_buffer(struct macchiato_dev_data *data, unsigned long arg)
+static long scan_op(const char *func, enum macchiato_op op,
+		    struct macchiato_dev_data *data, unsigned long arg)
 {
+	enum macchiato_irq irq;
+	printk("%s(): called...\n", func);
 
 	if (!data->dmabuf.size)
 		return -EFAULT;
@@ -126,16 +138,36 @@ static long scan_buffer(struct macchiato_dev_data *data, unsigned long arg)
 	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
 	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
 
-	switch (send_cmd("scan_buffer", data, MACCHIATO_OP_SCAN_BUFFER)) {
+	irq = send_cmd(data, op);
+
+	switch (irq) {
+	case MACCHIATO_IRQ_DONE:
+		printk("%s(): done!\n", func);
+		return 0;
+
 	case MACCHIATO_IRQ_FAILED:
-		return -ENOSPC;
-
-	case MACCHIATO_IRQ_FIRST_BUF:
+		printk("%s(): got IRQ_FAILED!\n", func);
 		return -EAGAIN;
-	}
 
-	printk("scan_buffer(): done!\n");
-	return 0;
+	default:
+		printk("%s(): got IRQ num %d!\n", func, irq);
+		return -EIO;
+	}
+}
+
+static long begin_scan(struct macchiato_dev_data *data, unsigned long arg)
+{
+	return scan_op(__func__, MACCHIATO_OP_BEGIN_SCAN, data, arg);
+}
+
+static long continue_scan(struct macchiato_dev_data *data, unsigned long arg)
+{
+	return scan_op(__func__, MACCHIATO_OP_CONTINUE_SCAN, data, arg);
+}
+
+static long rewind_scan(struct macchiato_dev_data *data, unsigned long arg)
+{
+	return scan_op(__func__, MACCHIATO_OP_REWIND_SCAN, data, arg);
 }
 
 static long get_results(struct macchiato_dev_data *data)
@@ -153,8 +185,7 @@ static long get_results(struct macchiato_dev_data *data)
 	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
 	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, data->dmabuf.size);
 
-	if (send_cmd("get_results", data, MACCHIATO_OP_GET_RESULTS) ==
-	    MACCHIATO_IRQ_FAILED)
+	if (send_cmd(data, MACCHIATO_OP_GET_RESULTS) == MACCHIATO_IRQ_FAILED)
 		return -ENOSPC;
 
 	printk("get_results(): done!\n");
@@ -182,9 +213,21 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		printk("ioctl(): add_rules()\n");
 		return add_rules(data, arg);
 
-	case MACCHIATO_IOC_SCAN_BUFFER:
-		printk("ioctl(): scan_buffer()\n");
-		return scan_buffer(data, arg);
+	case MACCHIATO_IOC_BEGIN_SCAN:
+		printk("ioctl(): begin_scan()\n");
+		return begin_scan(data, arg);
+
+	case MACCHIATO_IOC_CONTINUE_SCAN:
+		printk("ioctl(): continue_scan()\n");
+		return continue_scan(data, arg);
+
+	case MACCHIATO_IOC_REWIND_SCAN:
+		printk("ioctl(): rewind_scan()\n");
+		return rewind_scan(data, arg);
+
+	case MACCHIATO_IOC_END_SCAN:
+		printk("ioctl(): end_scan()\n");
+		return end_scan(data);
 
 	case MACCHIATO_IOC_GET_RESULTS:
 		printk("ioctl(): get_results()\n");

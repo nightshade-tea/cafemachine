@@ -26,10 +26,14 @@ static void irq_test(struct pci_dev *pdev)
 	data = pci_get_drvdata(pdev);
 
 	for (int i = 0; i < MACCHIATO_IRQ_CNT; ++i) {
-		pr_info("asking device to raise interrupt %d...\n", i);
-		writeq(i, (char *)data->bar[MACCHIATO_BAR_ID_CTL].mmio +
-				  MACCHIATO_REG_INT_TEST * 8);
+		reinit_completion(&data->sync);
+		pr_info("asking for interrupt %d...", i);
+		macchiato_reg_write_d(data, MACCHIATO_REG_INT_TEST, i);
+		wait_for_completion(&data->sync);
+		pr_info("got interrupt %d, ok.", i);
 	}
+
+	pr_info("finished irq tests!\n");
 }
 
 /* device initialization */
@@ -40,7 +44,7 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	dev = &pdev->dev;
 
-	pr_info("macchiato_probe()...");
+	pr_info("macchiato_probe() called!\n");
 
 	if ((err = macchiato_dev_data_alloc(pdev))) {
 		dev_err(dev, "macchiato_dev_data_alloc() failed: %pe\n",
@@ -90,7 +94,7 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_macchiato_chardev_create;
 	}
 
-	pr_cont(" ok.\n");
+	pr_cont("macchiato_probe()... ok.\n");
 
 	irq_test(pdev);
 
@@ -113,7 +117,7 @@ err_pci_enable_device:
 
 err_macchiato_dev_data_alloc:
 
-	dev_err(dev, "macchiato_probe() failed: %pe\n", ERR_PTR(err));
+	dev_err(dev, "macchiato_probe()... failed: %pe\n", ERR_PTR(err));
 	return err;
 }
 
@@ -123,7 +127,7 @@ static void macchiato_remove(struct pci_dev *pdev)
 	struct device *dev;
 
 	dev = &pdev->dev;
-	pr_info("macchiato_remove()...");
+	pr_info("macchiato_remove() called!\n");
 
 	macchiato_chardev_delete(pdev);
 	macchiato_irq_disable(pdev);
@@ -138,7 +142,7 @@ static void macchiato_remove(struct pci_dev *pdev)
 	macchiato_dev_data_free(pdev);
 	pci_set_drvdata(pdev, NULL);
 
-	pr_cont(" ok.\n");
+	pr_cont("macchiato_remove()... ok.\n");
 }
 
 /* macchiato driver struct */
@@ -154,7 +158,7 @@ static int __init macchiato_init(void)
 {
 	int err;
 
-	pr_info("macchiato_init()...");
+	pr_info("macchiato_init() called!\n");
 
 	if ((err = macchiato_chardev_init())) {
 		pr_err("macchiato_chardev_init() failed: %pe\n", ERR_PTR(err));
@@ -166,7 +170,7 @@ static int __init macchiato_init(void)
 		goto err_pci_register_driver;
 	}
 
-	pr_cont(" ok.\n");
+	pr_cont("macchiato_init()... ok.\n");
 	return 0;
 
 err_pci_register_driver:
@@ -174,17 +178,17 @@ err_pci_register_driver:
 
 err_macchiato_chardev_init:
 
-	pr_err("macchiato_init() failed: %pe\n", ERR_PTR(err));
+	pr_err("macchiato_init()... failed: %pe\n", ERR_PTR(err));
 	return err;
 }
 
 /* driver deinitialization */
 static void macchiato_exit(void)
 {
-	pr_info("macchiato_exit()...");
+	pr_info("macchiato_exit() called!\n");
 	pci_unregister_driver(&macchiato_pci_driver);
 	macchiato_chardev_deinit();
-	pr_cont(" ok.\n");
+	pr_cont("macchiato_exit()... ok.\n");
 }
 
 /* register entry point and exit point */
