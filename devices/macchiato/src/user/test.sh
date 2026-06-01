@@ -8,10 +8,10 @@
 #./test_bounds
 
 echo -e "\n--- RUNNING PIPELINE TEST ---"
-./test_pipeline "rule eicar { strings: \$a=\"EICAR\" condition: \$a }" "some random EICAR string data"
+./test_pipeline 'rule eicar { strings: $a="EICAR" condition: $a }' test_file.txt
 
 #echo -e "\n--- RUNNING CONCURRENCY TEST ---"
-#./test_mmap & 
+#./test_mmap &
 #./test_mmap &
 #wait
 #echo "[+] Concurrency test finished (one should fail with EBUSY)"

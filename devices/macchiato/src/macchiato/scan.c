@@ -352,19 +352,14 @@ err_no_compiler:
     return -1;
 }
 
+/* just destroy and reset
+ * begin_scan creates a new scanner and consumes it */
 void reset_scanner(MacchiatoState *dev)
 {
-
     macchiato_log("scanner reset called!\n");
 
     /* free stuff */
     destroy_scanner(dev);
-
-    /* setup it back up */
-    if (setup_scanner(dev) < 0) {
-        macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
-        return;
-    }
 
     /* reset iterctx and friends */
     iterctx.dev = dev;
@@ -411,6 +406,10 @@ raise_failed:
 void begin_scan(MacchiatoState *dev)
 {
     int err;
+
+    if (setup_scanner(dev) < 0) {
+        return; /* already raised IRQ_FAILED */
+    }
 
     if ((err = yr_scanner_scan_mem_blocks(dev->scanner, &iterator))) {
         macchiato_log(

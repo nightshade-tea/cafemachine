@@ -142,12 +142,20 @@ static long scan_op(const char *func, enum macchiato_op op,
 
 	switch (irq) {
 	case MACCHIATO_IRQ_DONE:
-		printk("%s(): done!\n", func);
+		printk("%s(): got IRQ_DONE!\n", func);
 		return 0;
 
 	case MACCHIATO_IRQ_FAILED:
 		printk("%s(): got IRQ_FAILED!\n", func);
 		return -EAGAIN;
+
+	case MACCHIATO_IRQ_NEXT_BUF:
+		printk("%s(): got IRQ_NEXT_BUF!\n", func);
+		return -ENODATA;
+
+	case MACCHIATO_IRQ_FIRST_BUF:
+		printk("%s(): got IRQ_FIRST_BUF!\n", func);
+		return -ESPIPE;
 
 	default:
 		printk("%s(): got IRQ num %d!\n", func, irq);
