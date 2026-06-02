@@ -49,7 +49,22 @@ static long reset_scanner(struct macchiato_dev_data *data)
 
 static long end_scan(struct macchiato_dev_data *data)
 {
-	send_cmd(data, MACCHIATO_OP_END_SCAN);
+	printk("end_scan(): called...\n");
+
+	reinit_completion(&data->sync);
+
+	printk("end_scan(): LOWER %d...\n", MACCHIATO_IRQ_NEXT_BUF);
+	macchiato_reg_write_d(data, MACCHIATO_REG_CMD, MACCHIATO_OP_END_SCAN);
+	macchiato_reg_write_d(data, MACCHIATO_REG_LOWER_IRQ,
+			      MACCHIATO_IRQ_NEXT_BUF);
+
+	wait_for_completion(&data->sync);
+
+	if (data->last_hwirq != MACCHIATO_IRQ_DONE) {
+		printk("end_scan(): got IRQ num %d!\n", data->last_hwirq);
+		return -EIO;
+	}
+
 	printk("end_scan(): done!\n");
 	return 0;
 }
@@ -123,11 +138,10 @@ static long add_rules(struct macchiato_dev_data *data, unsigned long arg)
 	return 0;
 }
 
-static long scan_op(const char *func, enum macchiato_op op,
-		    struct macchiato_dev_data *data, unsigned long arg)
+static long begin_scan(struct macchiato_dev_data *data, unsigned long arg)
 {
 	enum macchiato_irq irq;
-	printk("%s(): called...\n", func);
+	printk("%s(): called...\n", __func__);
 
 	if (!data->dmabuf.size)
 		return -EFAULT;
@@ -138,44 +152,82 @@ static long scan_op(const char *func, enum macchiato_op op,
 	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
 	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
 
-	irq = send_cmd(data, op);
+	irq = send_cmd(data, MACCHIATO_OP_BEGIN_SCAN);
 
 	switch (irq) {
 	case MACCHIATO_IRQ_DONE:
-		printk("%s(): got IRQ_DONE!\n", func);
+		printk("%s(): got IRQ_DONE!\n", __func__);
 		return 0;
 
 	case MACCHIATO_IRQ_FAILED:
-		printk("%s(): got IRQ_FAILED!\n", func);
+		printk("%s(): got IRQ_FAILED!\n", __func__);
 		return -EAGAIN;
 
 	case MACCHIATO_IRQ_NEXT_BUF:
-		printk("%s(): got IRQ_NEXT_BUF!\n", func);
+		printk("%s(): got IRQ_NEXT_BUF!\n", __func__);
 		return -ENODATA;
 
 	case MACCHIATO_IRQ_FIRST_BUF:
-		printk("%s(): got IRQ_FIRST_BUF!\n", func);
+		printk("%s(): got IRQ_FIRST_BUF!\n", __func__);
 		return -ESPIPE;
 
 	default:
-		printk("%s(): got IRQ num %d!\n", func, irq);
+		printk("%s(): got IRQ num %d!\n", __func__, irq);
 		return -EIO;
 	}
 }
 
-static long begin_scan(struct macchiato_dev_data *data, unsigned long arg)
+static long scan_op(const char *func, enum macchiato_op op,
+		    enum macchiato_irq lower, struct macchiato_dev_data *data,
+		    unsigned long arg)
 {
-	return scan_op(__func__, MACCHIATO_OP_BEGIN_SCAN, data, arg);
+	printk("%s(): called...\n", func);
+
+	if (!data->dmabuf.size)
+		return -EFAULT;
+
+	if (arg > data->dmabuf.size)
+		return -EINVAL;
+
+	reinit_completion(&data->sync);
+
+	macchiato_reg_write_d(data, MACCHIATO_REG_ADDR, data->dmabuf.paddr);
+	macchiato_reg_write_d(data, MACCHIATO_REG_SIZE, arg);
+	macchiato_reg_write_d(data, MACCHIATO_REG_CMD, op);
+	printk("%s(): LOWER %d...\n", func, lower);
+	macchiato_reg_write_d(data, MACCHIATO_REG_LOWER_IRQ, lower);
+
+	wait_for_completion(&data->sync);
+
+	switch (data->last_hwirq) {
+	case MACCHIATO_IRQ_DONE:
+		printk("%s(): got IRQ_DONE!\n", func);
+		return 0;
+	case MACCHIATO_IRQ_FAILED:
+		printk("%s(): got IRQ_FAILED!\n", func);
+		return -EAGAIN;
+	case MACCHIATO_IRQ_NEXT_BUF:
+		printk("%s(): got IRQ_NEXT_BUF!\n", func);
+		return -ENODATA;
+	case MACCHIATO_IRQ_FIRST_BUF:
+		printk("%s(): got IRQ_FIRST_BUF!\n", func);
+		return -ESPIPE;
+	default:
+		printk("%s(): got IRQ num %d!\n", func, data->last_hwirq);
+		return -EIO;
+	}
 }
 
 static long continue_scan(struct macchiato_dev_data *data, unsigned long arg)
 {
-	return scan_op(__func__, MACCHIATO_OP_CONTINUE_SCAN, data, arg);
+	return scan_op(__func__, MACCHIATO_OP_CONTINUE_SCAN,
+		       MACCHIATO_IRQ_NEXT_BUF, data, arg);
 }
 
 static long rewind_scan(struct macchiato_dev_data *data, unsigned long arg)
 {
-	return scan_op(__func__, MACCHIATO_OP_REWIND_SCAN, data, arg);
+	return scan_op(__func__, MACCHIATO_OP_REWIND_SCAN,
+		       MACCHIATO_IRQ_FIRST_BUF, data, arg);
 }
 
 static long get_results(struct macchiato_dev_data *data)

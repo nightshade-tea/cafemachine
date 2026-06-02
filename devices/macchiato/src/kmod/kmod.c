@@ -96,7 +96,7 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	pr_cont("macchiato_probe()... ok.\n");
 
-	irq_test(pdev);
+	// irq_test(pdev);
 
 	return 0;
 

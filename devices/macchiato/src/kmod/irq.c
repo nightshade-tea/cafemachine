@@ -26,6 +26,27 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t buf_op_handler(int hw_irqn, void *opaque)
+{
+	struct pci_dev *pdev;
+	struct macchiato_dev_data *data;
+
+	printk("GOT BUF IRQ: %d\n", hw_irqn);
+
+	pdev = (struct pci_dev *)opaque;
+	data = pci_get_drvdata(pdev);
+
+	data->last_hwirq = hw_irqn;
+	complete(&data->sync);
+
+	/* DO NOT LOWER!!
+	 * device should stay blocked until user resolves this buf op.
+	 * next ioctl will lower it after writing to REG_CMD */
+
+	printk("IRQ HANDLED: %d\n", hw_irqn);
+	return IRQ_HANDLED;
+}
+
 /* dummy handlers just so we dont have to make a mapping of virtual irq numbers
  * to device irq numbers... in our case they just happen to all do the same
  * thing */
@@ -42,12 +63,12 @@ static irqreturn_t failed_handler(int irq, void *opaque)
 
 static irqreturn_t next_buf_handler(int irq, void *opaque)
 {
-	return sync_handler(MACCHIATO_IRQ_NEXT_BUF, opaque);
+	return buf_op_handler(MACCHIATO_IRQ_NEXT_BUF, opaque);
 }
 
 static irqreturn_t first_buf_handler(int irq, void *opaque)
 {
-	return sync_handler(MACCHIATO_IRQ_FIRST_BUF, opaque);
+	return buf_op_handler(MACCHIATO_IRQ_FIRST_BUF, opaque);
 }
 
 static const irq_handler_t handlers[MACCHIATO_IRQ_CNT] = {
