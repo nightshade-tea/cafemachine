@@ -32,12 +32,12 @@ void macchiato_irq_raise(MacchiatoState *dev, unsigned int vector)
         return;
     }
 
-    macchiato_log("grabbing lock for irq %u\n", vector);
+    macchiato_log("grabbing lock for irq %s\n", macchiato_irq_str(vector));
     pthread_mutex_lock(&dev->irq_locks[vector]);
 
     dev->irq[vector] = true;
     msix_notify(&dev->pci_dev, vector);
-    macchiato_log("irq %u raised\n", vector);
+    macchiato_log("irq %s raised\n", macchiato_irq_str(vector));
 }
 
 void macchiato_irq_lower(MacchiatoState *dev, unsigned int vector)
@@ -50,18 +50,19 @@ void macchiato_irq_lower(MacchiatoState *dev, unsigned int vector)
 
     pthread_mutex_unlock(&dev->irq_locks[vector]);
 
-    macchiato_log("irq %u lowered\n", vector);
+    macchiato_log("irq %s lowered\n", macchiato_irq_str(vector));
 }
 
 void macchiato_irq_reset(MacchiatoState *dev)
 {
     memset(&dev->irq, 0, sizeof dev->irq);
-    macchiato_log("irq_reset: all irqs lowered\n");
+    macchiato_log("irq_reset(): all irqs lowered\n");
 }
 
+/* may be an issue  */
 void wait_for_irq(MacchiatoState *dev, int vector)
 {
-    macchiato_log("waiting for irq lower vector=%d\n", vector);
-    pthread_mutex_unlock(&dev->irq_locks[vector]);
+    macchiato_log("waiting for irq lower vector %s\n",
+                  macchiato_irq_str(vector));
     pthread_mutex_lock(&dev->irq_locks[vector]);
 }

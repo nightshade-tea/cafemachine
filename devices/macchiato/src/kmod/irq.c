@@ -4,6 +4,7 @@
 #include "mmio.h"
 
 /* this sucks  */
+#define prk(fmt, ...) printk("%s(): " fmt "\n", __func__, ##__VA_ARGS__)
 
 /* actual handler  */
 static irqreturn_t sync_handler(int hw_irqn, void *opaque)
@@ -11,7 +12,7 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	struct pci_dev *pdev;
 	struct macchiato_dev_data *data;
 
-	printk("GOT IRQ: %d\n", hw_irqn);
+	prk("got %s", macchiato_irq_str(hw_irqn));
 
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
@@ -19,10 +20,10 @@ static irqreturn_t sync_handler(int hw_irqn, void *opaque)
 	data->last_hwirq = hw_irqn;
 	complete(&data->sync);
 
-	printk("LOWERING: %d\n", hw_irqn);
+	prk("lowering %s", macchiato_irq_str(hw_irqn));
 	macchiato_reg_write(pdev, MACCHIATO_REG_LOWER_IRQ, hw_irqn);
 
-	printk("IRQ HANDLED: %d\n", hw_irqn);
+	prk("handled %s", macchiato_irq_str(hw_irqn));
 	return IRQ_HANDLED;
 }
 
@@ -31,7 +32,7 @@ static irqreturn_t buf_op_handler(int hw_irqn, void *opaque)
 	struct pci_dev *pdev;
 	struct macchiato_dev_data *data;
 
-	printk("GOT BUF IRQ: %d\n", hw_irqn);
+	prk("got %s", macchiato_irq_str(hw_irqn));
 
 	pdev = (struct pci_dev *)opaque;
 	data = pci_get_drvdata(pdev);
@@ -43,7 +44,7 @@ static irqreturn_t buf_op_handler(int hw_irqn, void *opaque)
 	 * device should stay blocked until user resolves this buf op.
 	 * next ioctl will lower it after writing to REG_CMD */
 
-	printk("IRQ HANDLED: %d\n", hw_irqn);
+	prk("handled %s", macchiato_irq_str(hw_irqn));
 	return IRQ_HANDLED;
 }
 

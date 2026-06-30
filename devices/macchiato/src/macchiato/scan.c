@@ -150,7 +150,8 @@ static int get_next_buf(struct iterator_context *ctx)
         return -ESHUTDOWN;
 
     default:
-        macchiato_log("get_next_buf() :: user called invalid cmd...\n");
+        macchiato_log("get_next_buf() :: user called invalid cmd (%s)...\n",
+                      macchiato_op_str(dev->reg[MACCHIATO_REG_CMD]));
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return -EINVAL;
     }

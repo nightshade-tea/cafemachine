@@ -17,25 +17,6 @@ static struct pci_device_id macchiato_id_table[] = {
 
 MODULE_DEVICE_TABLE(pci, macchiato_id_table);
 
-static void irq_test(struct pci_dev *pdev)
-{
-	struct macchiato_dev_data *data;
-
-	pr_info("starting irq tests...\n");
-
-	data = pci_get_drvdata(pdev);
-
-	for (int i = 0; i < MACCHIATO_IRQ_CNT; ++i) {
-		reinit_completion(&data->sync);
-		pr_info("asking for interrupt %d...", i);
-		macchiato_reg_write_d(data, MACCHIATO_REG_INT_TEST, i);
-		wait_for_completion(&data->sync);
-		pr_info("got interrupt %d, ok.", i);
-	}
-
-	pr_info("finished irq tests!\n");
-}
-
 /* device initialization */
 static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
@@ -95,8 +76,6 @@ static int macchiato_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	pr_cont("macchiato_probe()... ok.\n");
-
-	// irq_test(pdev);
 
 	return 0;
 

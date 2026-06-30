@@ -8,7 +8,8 @@
 /* handler for all device operations triggered by writing to MACCHIATO_CMD */
 static void macchiato_cmd(MacchiatoState *dev)
 {
-    macchiato_log("got %#" PRIx64 " command\n", dev->reg[MACCHIATO_REG_CMD]);
+    macchiato_log("got %s\n", macchiato_op_str(dev->reg[MACCHIATO_REG_CMD]));
+
     switch (dev->reg[MACCHIATO_REG_CMD]) {
     case MACCHIATO_OP_RESET_COMPILER:
         reset_compiler(dev);
@@ -46,8 +47,8 @@ static uint64_t macchiato_reg_read(void *opaque, hwaddr addr, unsigned size)
         return 0;
     }
 
-    macchiato_log("got mmio read at register %u -> %#" PRIx64 "\n", idx,
-                  dev->reg[idx]);
+    macchiato_log("got mmio read at register %s -> %#" PRIx64 "\n",
+                  macchiato_reg_str(idx), dev->reg[idx]);
 
     return dev->reg[idx];
 }
@@ -64,7 +65,8 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
         return;
     }
 
-    macchiato_log("got mmio write at register %u <- %#" PRIx64 "\n", idx, data);
+    macchiato_log("got mmio write at register %s <- %#" PRIx64 "\n",
+                  macchiato_reg_str(idx), data);
 
     /* special cases */
     switch (idx) {
@@ -76,10 +78,6 @@ static void macchiato_reg_write(void *opaque, hwaddr addr, uint64_t data,
     case MACCHIATO_REG_LOWER_IRQ:
         macchiato_irq_lower(dev, data);
         return;
-
-    case MACCHIATO_REG_INT_TEST:
-        macchiato_log("macchiato interrupt test...\n");
-        macchiato_irq_raise(dev, data);
     }
 
     dev->reg[idx] = data;

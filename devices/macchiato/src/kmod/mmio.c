@@ -37,7 +37,7 @@ int macchiato_mmio_enable(struct pci_dev *pdev)
 
 		if (!(data->bar[id].mmio = pci_iomap(
 			      pdev, id, 0 /* zero maps the whole bar */))) {
-			dev_err(dev, "pci_iomap(id=%d) returned NULL\n", id);
+			dev_err(dev, "pci_iomap(id=%d) returned null\n", id);
 			err = -ENOMEM;
 			goto err_pci_iomap;
 		}
