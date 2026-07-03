@@ -13,6 +13,7 @@ void macchiato_irq_init(MacchiatoState *dev, Error **errp);
 void macchiato_irq_deinit(MacchiatoState *dev);
 
 void macchiato_irq_raise(MacchiatoState *dev, unsigned int vector);
+void macchiato_irq_raise_wait(MacchiatoState *dev, unsigned int vector);
 
 void macchiato_nmi_raise(MacchiatoState *dev, unsigned int vector);
 

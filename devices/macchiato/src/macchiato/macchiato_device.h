@@ -22,6 +22,12 @@ typedef struct MacchiatoClass {
     PCIDeviceClass parent_class; /* inherit */
 } MacchiatoClass;
 
+struct irqsync {
+    bool raised;
+    pthread_mutex_t lock;
+    pthread_cond_t handled;
+};
+
 /* Object (State) */
 typedef struct MacchiatoState {
     PCIDevice pci_dev; /* inherit */
@@ -37,9 +43,7 @@ typedef struct MacchiatoState {
     struct machyara_scan *scan;
     sem_t scan_finished;
 
-    /* raised interrupts vector */
-    bool irq[MACCHIATO_IRQ_CNT];
-    pthread_mutex_t irq_locks[MACCHIATO_IRQ_CNT];
+    struct irqsync irq[MACCHIATO_IRQ_CNT];
 
     uint8_t buffer[MACCHIATO_DEV_BUF_SZ];
 

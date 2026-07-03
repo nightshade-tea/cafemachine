@@ -137,8 +137,7 @@ static int get_next_buf(struct iterator_context *ctx)
     MacchiatoState *dev = ctx->dev;
     macchiato_log("get_next_buf() :: asking for a new user buf\n");
 
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_NEXT_BUF);
-    wait_for_irq(dev, MACCHIATO_IRQ_NEXT_BUF);
+    macchiato_irq_raise_wait(dev, MACCHIATO_IRQ_NEXT_BUF);
 
     switch (dev->reg[MACCHIATO_REG_CMD]) {
     case MACCHIATO_OP_CONTINUE_SCAN:
@@ -184,8 +183,7 @@ static int get_first_buf(struct iterator_context *ctx)
     MacchiatoState *dev = ctx->dev;
     macchiato_log("get_first_buf() :: asking for a new user buf\n");
 
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_FIRST_BUF);
-    wait_for_irq(dev, MACCHIATO_IRQ_FIRST_BUF);
+    macchiato_irq_raise_wait(dev, MACCHIATO_IRQ_FIRST_BUF);
 
     switch (dev->reg[MACCHIATO_REG_CMD]) {
     case MACCHIATO_OP_REWIND_SCAN:
