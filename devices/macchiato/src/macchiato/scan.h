@@ -16,8 +16,6 @@ void add_rule(MacchiatoState *dev);
 
 void begin_scan(MacchiatoState *dev);
 
-void end_scan(MacchiatoState *dev);
-
 void get_results(MacchiatoState *dev);
 
 #endif

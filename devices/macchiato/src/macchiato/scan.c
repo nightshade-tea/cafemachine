@@ -423,13 +423,6 @@ void begin_scan(MacchiatoState *dev)
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
 }
 
-/* TODO: remove this cmd now... */
-void end_scan(MacchiatoState *dev)
-{
-    macchiato_log("end_scan() :: called\n");
-    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
-}
-
 void get_results(MacchiatoState *dev)
 {
     macchiato_log("get_results() :: called\n");

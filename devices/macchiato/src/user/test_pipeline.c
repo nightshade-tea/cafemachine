@@ -48,6 +48,20 @@ int main(int argc, char **argv) {
   }
   printf("[+] mmap ok (size=%d)\n", BUF_SIZE);
 
+  /* have to use a userspace buf because of failed direct fread into dma buf
+   *
+   * [  269.776949] netfs: Couldn't get user pages (rc=-14)
+   * [  269.777474] netfs: Zero-sized read [R=c2]
+   * [  269.778152] ioctl( cmd=22787 arg=0 )
+   *
+   * rc=-14 is EFAULT (bad address). idk either, seems dmad regions do not
+   * support direct file reads to it, so we need a middleman buf */
+  char *buff = malloc(BUF_SIZE);
+  if (!buff) {
+    perror("malloc buff");
+    goto out_mmap;
+  }
+
   /* 4. ADD_RULE */
   size_t rule_len = strlen(argv[1]) + 1;
   strcpy(buf, argv[1]);
@@ -67,48 +81,48 @@ int main(int argc, char **argv) {
 
   printf("[*] target file size: %zu bytes\n", target_size);
 
-  size_t file_off = 0;
   int scan_done = 0;
-  int begin_scan = 1;
+  size_t file_off = 0;
+
+  int curr_ioc = MACCHIATO_IOC_BEGIN_SCAN;
 
   while (!scan_done) {
-    ssize_t chunk = read_chunk(target_f, file_off, buf, BUF_SIZE);
-    if (chunk < 0) {
+    ssize_t chunk_sz = read_chunk(target_f, file_off, buff, BUF_SIZE);
+    if (chunk_sz < 0) {
       perror("[-] read_chunk");
-      goto out_mmap;
+      goto out_buff;
     }
 
-    size_t chunk_sz = (size_t)chunk;
+    if (chunk_sz == 0) {
+      if (ferror(target_f)) {
+        fprintf(stderr, "[-] fread failed!\n");
+        goto out_buff;
+      }
+    }
 
-    int ioc =
-        begin_scan ? MACCHIATO_IOC_BEGIN_SCAN : MACCHIATO_IOC_CONTINUE_SCAN;
+    memcpy(buf, buff, chunk_sz);
 
-    const char *ioc_name = begin_scan ? "BEGIN_SCAN" : "CONTINUE_SCAN";
-
-    begin_scan = 0;
-
-    printf("[*] %s (file_off=%zu chunk=%zu)...\n", ioc_name, file_off,
-           chunk_sz);
-
-    if (ioctl(fd, ioc, chunk_sz) == 0) {
-      printf("[+] %s -> IRQ_DONE, scan complete\n", ioc_name);
+    if (ioctl(fd, curr_ioc, chunk_sz) == 0) {
+      printf("[+] Scan complete\n");
       scan_done = 1;
       continue;
     }
 
     switch (errno) {
     case ESPIPE:
-      printf("[+] %s -> IRQ_FIRST_BUF\n", ioc_name);
-      file_off += chunk_sz;
+      printf("[+] Rewinding...\n");
+      file_off = 0;
+      curr_ioc = MACCHIATO_IOC_REWIND_SCAN;
       break;
 
     case ENODATA:
-      printf("[+] %s -> IRQ_NEXT_BUF\n", ioc_name);
+      printf("[+] Advancing...\n");
       file_off += chunk_sz;
+      curr_ioc = MACCHIATO_IOC_CONTINUE_SCAN;
       break;
 
     case EAGAIN:
-      fprintf(stderr, "[-] %s -> IRQ_FAILED\n", ioc_name);
+      fprintf(stderr, "[-] hardware error!\n");
       goto out_mmap;
 
     default:
@@ -141,6 +155,8 @@ int main(int argc, char **argv) {
   printf("[+] Scan complete. Hardware wrote back: \n%s\n", buf);
   ret = 0;
 
+out_buff:
+  free(buff);
 out_mmap:
   /* release() does it, no munmap */
 out_fd:

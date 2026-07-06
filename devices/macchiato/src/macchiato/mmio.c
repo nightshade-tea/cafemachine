@@ -24,10 +24,6 @@ static void macchiato_cmd(MacchiatoState *dev)
         add_rule(dev);
         break;
 
-    case MACCHIATO_OP_END_SCAN:
-        end_scan(dev);
-        break;
-
     case MACCHIATO_OP_GET_RESULTS:
         get_results(dev);
         break;
@@ -42,7 +38,31 @@ static void macchiato_cmd(MacchiatoState *dev)
 
     case MACCHIATO_OP_CONTINUE_SCAN:
     case MACCHIATO_OP_REWIND_SCAN:
-        /* just signals a unlock to the blocked thread, no handling */
+
+        /*
+         * overview scan op
+         *
+         *         user                        dev
+         *           .    ...scan started...    .
+         *           .                          |
+         *           .                          |
+         *           +<----- nxt/first buf <----+   device asks for buf and
+         * waits remaps   | buffer |
+         *           +------> set cmd reg ----->*   here (nothing, just reg
+         * update)
+         *           |
+         *           +-----> lower op irq ----->+   wakes blocked scan op
+         *           .                          |
+         *           .                          |   consume the buffer and
+         * repeat .       ...again...        .
+         *
+         *  scan op handler then checks reg value and decides what to do.
+         */
+
+    case MACCHIATO_OP_END_SCAN:
+        /* user has no more data. same thing will happen but the scan op handler
+         * will check reg value and see that user called end_scan. it will then
+         * return null to yara and then scan_mem_blocks will finish */
         break;
     }
 }
