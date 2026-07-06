@@ -6,12 +6,49 @@
 #include <pthread.h>
 #include <yara.h>
 
+/* we only need to do begin_scan in the worker thread, all scan calls are done
+ * internally (by yara_scanner_scan_mem_blocks) so the stack/ctx will be of this
+ * worker, which, differently from the main thread, can be blocked by semaphores
+ * or, in our case, condition variables */
+static void *macchiato_wrk(void *opaque)
+{
+    MacchiatoState *dev = opaque;
+
+    macchiato_log("wrk thread started\n");
+    pthread_mutex_lock(&dev->wrk_lock);
+
+    while (dev->wrk_running) {
+
+        /* wait for cmd (begin or exit) */
+        while (!dev->begin_scan && dev->wrk_running) {
+            pthread_cond_wait(&dev->wrk_cond, &dev->wrk_lock);
+        }
+
+        /* asked for exit */
+        if (!dev->wrk_running) {
+            break;
+        }
+
+        /* asked for begin_scan */
+
+        dev->begin_scan = false;
+        pthread_mutex_unlock(&dev->wrk_lock);
+
+        macchiato_log("wrk: beginning yara scan...\n");
+        begin_scan(dev);
+
+        pthread_mutex_lock(&dev->wrk_lock);
+    }
+
+    pthread_mutex_unlock(&dev->wrk_lock);
+    macchiato_log("wrk thread exiting\n");
+    return NULL;
+}
+
 /* instantiate a macchiato device object (MacchiatoState) */
 static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
 {
     MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
-
-    sem_init(&dev->scan_finished, 1, 0);
 
     /* set pci express capability on pci configuration space */
     if (pci_bus_is_express(pci_get_bus(pci_dev)) &&
@@ -25,7 +62,42 @@ static void macchiato_realize(PCIDevice *pci_dev, Error **errp)
     dev->compiler = NULL;
     dev->scanner = NULL;
 
+    /* start wrk thread */
+    dev->wrk_running = true;
+    dev->begin_scan = false;
+    pthread_mutex_init(&dev->wrk_lock, NULL);
+    pthread_cond_init(&dev->wrk_cond, NULL);
+
+    if (pthread_create(&dev->wrk_thread, NULL, macchiato_wrk, dev) != 0) {
+        macchiato_log("failed to create wrk thread\n");
+    }
+
     macchiato_log("device realized\n");
+}
+
+static void macchiato_exit(PCIDevice *pci_dev)
+{
+    MacchiatoState *dev = MACCHIATO_DEVICE(pci_dev);
+
+    macchiato_log("device exiting, joining wrk...\n");
+
+    /* make wrk exit */
+    pthread_mutex_lock(&dev->wrk_lock);
+    dev->wrk_running = false;
+    pthread_cond_signal(&dev->wrk_cond);
+    pthread_mutex_unlock(&dev->wrk_lock);
+
+    /* wait for it */
+    pthread_join(dev->wrk_thread, NULL);
+
+    /* free stuff (needed?) */
+    pthread_mutex_destroy(&dev->wrk_lock);
+    pthread_cond_destroy(&dev->wrk_cond);
+
+    /* TODO: check what else needs deinit/free */
+    // macchiato_irq_deinit(dev); // for example
+
+    macchiato_log("device unrealized\n");
 }
 
 /* initialize macchiato device class (MacchiatoClass) methods and static
@@ -36,6 +108,7 @@ static void macchiato_class_init(ObjectClass *klass, void *data)
     PCIDeviceClass *pci_device_class = PCI_DEVICE_CLASS(klass);
 
     pci_device_class->realize = macchiato_realize;
+    pci_device_class->exit = macchiato_exit;
     pci_device_class->vendor_id = MACCHIATO_VENDOR_ID;
     pci_device_class->device_id = MACCHIATO_DEVICE_ID;
     pci_device_class->class_id = PCI_CLASS_OTHERS;

@@ -112,7 +112,6 @@ static int scanner_callback(YR_SCAN_CONTEXT *ctx, int msg, void *msg_data,
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
-        sem_post(&dev->scan_finished);
         macchiato_log("scan finished!\n");
         break;
 
@@ -420,15 +419,15 @@ void begin_scan(MacchiatoState *dev)
 
     macchiato_log(
         "scan finished :: yr_scanner_scan_mem_blocks returned success\n");
-}
-
-void end_scan(MacchiatoState *dev)
-{
-    macchiato_log("end_scan() :: waiting for mutex\n");
-    sem_wait(&dev->scan_finished);
     dev->reg[MACCHIATO_REG_SIZE] = dev->scan->serialsz;
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
-    macchiato_log("end_scan() :: done\n");
+}
+
+/* TODO: remove this cmd now... */
+void end_scan(MacchiatoState *dev)
+{
+    macchiato_log("end_scan() :: called\n");
+    macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
 }
 
 void get_results(MacchiatoState *dev)

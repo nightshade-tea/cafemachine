@@ -41,11 +41,17 @@ typedef struct MacchiatoState {
     YR_RULES *rules;
     YR_SCANNER *scanner;
     struct machyara_scan *scan;
-    sem_t scan_finished;
 
     struct irqsync irq[MACCHIATO_IRQ_CNT];
 
     uint8_t buffer[MACCHIATO_DEV_BUF_SZ];
+
+    /* worker thread to "bypass" BQL :l */
+    pthread_t wrk_thread;
+    pthread_mutex_t wrk_lock;
+    pthread_cond_t wrk_cond;
+    bool begin_scan;
+    bool wrk_running;
 
 } MacchiatoState;
 

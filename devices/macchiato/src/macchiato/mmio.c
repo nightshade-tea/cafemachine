@@ -11,24 +11,35 @@ static void macchiato_cmd(MacchiatoState *dev)
     macchiato_log("got %s\n", macchiato_op_str(dev->reg[MACCHIATO_REG_CMD]));
 
     switch (dev->reg[MACCHIATO_REG_CMD]) {
+
     case MACCHIATO_OP_RESET_COMPILER:
         reset_compiler(dev);
         break;
+
     case MACCHIATO_OP_RESET_SCANNER:
         reset_scanner(dev);
         break;
+
     case MACCHIATO_OP_ADD_RULE:
         add_rule(dev);
         break;
-    case MACCHIATO_OP_BEGIN_SCAN:
-        begin_scan(dev);
-        break;
+
     case MACCHIATO_OP_END_SCAN:
         end_scan(dev);
         break;
+
     case MACCHIATO_OP_GET_RESULTS:
         get_results(dev);
         break;
+
+    /* just notify wrk to call begin_scan */
+    case MACCHIATO_OP_BEGIN_SCAN:
+        pthread_mutex_lock(&dev->wrk_lock);
+        dev->begin_scan = true;
+        pthread_cond_signal(&dev->wrk_cond);
+        pthread_mutex_unlock(&dev->wrk_lock);
+        break;
+
     case MACCHIATO_OP_CONTINUE_SCAN:
     case MACCHIATO_OP_REWIND_SCAN:
         /* just signals a unlock to the blocked thread, no handling */
