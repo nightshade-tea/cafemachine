@@ -5,6 +5,9 @@
 
 int macchiato_dma_read(MacchiatoState *dev, hwaddr addr, hwaddr size);
 
+int macchiato_dma_read_off(MacchiatoState *dev, size_t off, hwaddr addr,
+                           hwaddr size);
+
 MemTxResult macchiato_dma_write(MacchiatoState *dev, hwaddr dest, void *src,
                                 size_t size);
 

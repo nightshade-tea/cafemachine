@@ -1,11 +1,6 @@
-/* TODO  */
-/*
- * test a payload bigger than internal buffer
- *
- * new ops
- * */
-
 #include "scan.h"
+
+#define MACCHIATO_OVERLAP_SZ 2048
 
 /* types  ------------------------------------------------------------------  */
 
@@ -48,6 +43,7 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
 {
     MacchiatoState *dev = ctx->dev;
     uint64_t ubuf_sz = dev->reg[MACCHIATO_REG_SIZE];
+    size_t overlap = 0;
 
     ctx->block.base = ctx->file_off;
 
@@ -59,21 +55,36 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
         return ctx->valid = 0;
     }
 
-    /* how much there is left in the userbuf to read */
-    uint64_t remaining = ubuf_sz - ctx->ubuf_off;
+    size_t max_overlap = MIN(MACCHIATO_OVERLAP_SZ, MACCHIATO_DEV_BUF_SZ / 2);
 
-    /* choose to copy as much as possible */
-    ctx->block.size = MIN(remaining, MACCHIATO_DEV_BUF_SZ);
+    if (ctx->file_off > 0 && ctx->block.size > 0) {
+        overlap = MIN(ctx->block.size, max_overlap);
+    }
+
+    if (overlap > 0) {
+        memmove(dev->buffer, dev->buffer + ctx->block.size - overlap, overlap);
+    }
+
+    ctx->block.base = ctx->file_off - overlap;
+
+    /* how much there is left in the userbuf to read */
+    size_t remaining = ubuf_sz - ctx->ubuf_off;
+
+    /* left in buf to read or size of new data */
+    size_t to_read = MIN(remaining, MACCHIATO_DEV_BUF_SZ - overlap);
 
     macchiato_log("fetch_blk() :: ctx=%p\n", ctx);
     macchiato_log("fetch_blk() :: ctx->ubuf_off=%zu\n", ctx->ubuf_off);
     macchiato_log("fetch_blk() :: ctx->block.size=%zu\n", ctx->block.size);
+    macchiato_log("fetch_blk() :: overlap=%zu new_data=%zu\n", overlap,
+                  to_read);
 
     macchiato_log("fetch_blk() :: starting dma read... \n");
 
     /* copy it */
-    if (macchiato_dma_read(dev, dev->reg[MACCHIATO_REG_ADDR] + ctx->ubuf_off,
-                           ctx->block.size) != MEMTX_OK) {
+    if (macchiato_dma_read_off(dev, overlap,
+                               dev->reg[MACCHIATO_REG_ADDR] + ctx->ubuf_off,
+                               to_read) != MEMTX_OK) {
         macchiato_log("fetch_blk() :: dma read failed!\n");
         macchiato_irq_raise(dev, MACCHIATO_IRQ_FAILED);
         return ctx->valid = 0;
@@ -81,8 +92,9 @@ static uint8_t fetch_blk(struct iterator_context *ctx)
     macchiato_log("fetch_blk() :: finished dma read!\n");
 
     /* advance the pointers */
-    ctx->ubuf_off += ctx->block.size;
-    ctx->file_off += ctx->block.size;
+    ctx->block.size = overlap + to_read;
+    ctx->ubuf_off += to_read;
+    ctx->file_off += to_read;
 
     ctx->valid = 1;
     ctx->buf = dev->buffer;
@@ -365,6 +377,7 @@ void reset_scanner(MacchiatoState *dev)
     iterctx.valid = 1;
     iterctx.ubuf_off = 0;
     iterctx.file_off = 0;
+    iterctx.block.size = 0;
 
     macchiato_log("scanner reset\n");
     macchiato_irq_raise(dev, MACCHIATO_IRQ_DONE);
