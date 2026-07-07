@@ -296,30 +296,55 @@ static int mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct macchiato_dev_data *data;
 	struct pci_dev *pdev;
-	size_t len;
+	size_t len, kern_lim;
 	int err;
 
 	data = file->private_data;
 	pdev = data->pdev;
 
 	if (data->dmabuf.size)
-		return -ENFILE;
+		return -EBUSY;
 
 	len = vma->vm_end - vma->vm_start; /* [vm_start; vm_end)  */
-	prk("dma_alloc_coherent(len = %zu)...", len);
-	data->dmabuf.kvaddr = dma_alloc_coherent(
-		&pdev->dev, len, &data->dmabuf.paddr, GFP_KERNEL);
 
-	if (!data->dmabuf.kvaddr)
+	/* can it be bigger than the device's buffer? */
+	// if (len > MACCHIATO_DEV_BUF_SZ) {
+	//   prk("mmap size %zu exceeds device limit %u", len,
+	//   MACCHIATO_DEV_BUF_SZ); return -EINVAL;
+	// }
+
+	kern_lim = PAGE_SIZE << MAX_PAGE_ORDER;
+
+	/* can't be bigger than kernel limit */
+	if (len > kern_lim) {
+		prk("mmap size %zu exceeds kernel limit %zu", len, kern_lim);
+		return -EINVAL;
+	}
+
+	prk("dma_alloc_coherent(len = %zu)...", len);
+
+	/* NOWARN for no --[ cut here ]-- report if the alloc has failed
+	 * see:
+	 * https://manpages.debian.org/testing/linux-manual-4.8/kmalloc.9.en.html#DESCRIPTION
+	 */
+	data->dmabuf.kvaddr =
+		dma_alloc_coherent(&pdev->dev, len, &data->dmabuf.paddr,
+				   GFP_KERNEL | __GFP_NOWARN);
+
+	if (!data->dmabuf.kvaddr) {
+		prk("failed to allocate dma region");
 		return -ENOMEM;
+	}
 
 	prk("dma_mmap_coherent()...");
 	err = dma_mmap_coherent(&pdev->dev, vma, data->dmabuf.kvaddr,
 				data->dmabuf.paddr, len);
 
 	if (err) {
+		prk("dma_mmap_coherent failed with %d", err);
 		dma_free_coherent(&pdev->dev, len, data->dmabuf.kvaddr,
 				  data->dmabuf.paddr);
+		data->dmabuf.kvaddr = NULL;
 		return err;
 	}
 

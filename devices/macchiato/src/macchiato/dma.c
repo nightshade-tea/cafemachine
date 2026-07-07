@@ -18,7 +18,7 @@ static int dma_read(MacchiatoState *dev, void *buf, hwaddr addr, hwaddr size)
 int macchiato_dma_read(MacchiatoState *dev, hwaddr addr, hwaddr size)
 {
 
-    if (size >= MACCHIATO_DEV_BUF_SZ) {
+    if (size > MACCHIATO_DEV_BUF_SZ) {
         macchiato_log("failed dma read: not enough space\n");
         return 1;
     }

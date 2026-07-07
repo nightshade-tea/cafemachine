@@ -9,7 +9,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define BUF_SIZE (1024 * 1024)
+/* do not make this larger than PAGESZ << MAX_PAGE_ORDER
+ * kernel will fail to alloc a BUF_SIZE larger than that */
+#define BUF_SIZE (3 * 1024 * 1024)
 
 static ssize_t read_chunk(FILE *f, size_t off, void *dst, size_t len) {
   if (fseek(f, (long)off, SEEK_SET) != 0)
