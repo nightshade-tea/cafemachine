@@ -8,7 +8,7 @@
 #./test_bounds
 
 echo -e "\n--- RUNNING PIPELINE TEST ---"
-./test_pipeline 'rule eicar { strings: $a="EICAR" condition: $a }' test1
+./test_pipeline 'rule eicar { strings: $a="EICAR" condition: $a }' test2
 
 #echo -e "\n--- RUNNING CONCURRENCY TEST ---"
 #./test_mmap &
