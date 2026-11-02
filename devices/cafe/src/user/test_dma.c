@@ -12,19 +12,19 @@ int main() {
   int fd;
 
   if ((fd = open("/dev/cafe", O_RDWR)) < 0) {
-    perror("failed to open /dev/cafe\n");
+    perror("failed to open /dev/cafe");
     return 1;
   }
 
-  if ((mem = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) ==
-      MAP_FAILED) {
-    perror("mmap failed\n");
+  if ((mem = mmap(NULL, CAFE_MMIO_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+                  0)) == MAP_FAILED) {
+    perror("mmap failed");
     return 1;
   }
 
-  mem[CAFE_DMA_SRC] = 0LL;
-  mem[CAFE_DMA_SZ] = 512LL;
-  mem[CAFE_CMD] = 0LL;
+  mem[CAFE_DMA_SRC] = 0;
+  mem[CAFE_DMA_SZ] = 512;
+  mem[CAFE_CMD] = CAFE_DMA_READ;
 
   return 0;
 }

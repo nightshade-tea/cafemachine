@@ -1,4 +1,4 @@
-PROGRAMS := test_mmap test_dma test_dump
+PROGRAMS := test_mmap test_dma dump
 CFLAGS ?= -Wall -Wextra -g
 CFLAGS += -I../../include
 

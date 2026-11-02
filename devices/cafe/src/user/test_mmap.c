@@ -1,3 +1,4 @@
+#include "cafe.h"
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,13 +13,13 @@ int main(int argc, char **argv) {
   int count;
 
   if ((fd = open("/dev/cafe", O_RDWR)) < 0) {
-    perror("failed to open /dev/cafe\n");
+    perror("failed to open /dev/cafe");
     return 1;
   }
 
-  if ((mem = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) ==
-      MAP_FAILED) {
-    perror("mmap failed\n");
+  if ((mem = mmap(NULL, CAFE_MMIO_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+                  0)) == MAP_FAILED) {
+    perror("mmap failed");
     return 1;
   }
 
@@ -27,8 +28,8 @@ int main(int argc, char **argv) {
   else
     count = atoi(argv[1]);
 
-  if (count < 1)
-    count = 4096 / 8;
+  if (count < 1 || count > CAFE_MMIO_SIZE / CAFE_REG_SZ)
+    count = CAFE_MMIO_SIZE / CAFE_REG_SZ;
 
   for (int i = 0; i < count; i++)
     mem[i] = 0xcafecafe;

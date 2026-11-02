@@ -3,26 +3,26 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 int main() {
+  char basename[sizeof(unsigned long)] = "mem";
   unsigned long arg;
-  char dumpfile[sizeof arg] = "mem";
   int fd;
-  long err;
 
-  arg = *((unsigned long *)dumpfile);
+  memcpy(&arg, basename, sizeof arg);
 
   if ((fd = open("/dev/cafe", O_RDWR)) < 0) {
-    perror("failed to open /dev/cafe\n");
+    perror("failed to open /dev/cafe");
     return 1;
   }
 
-  if ((err = ioctl(fd, CAFE_IOCTL_DUMP_MEM, arg))) {
-    fprintf(stderr, "ioctl failed! (%ld)\n", err);
+  if (ioctl(fd, CAFE_IOCTL_DUMP_MEM, arg) < 0) {
+    perror("ioctl failed");
     return 2;
   }
 
