@@ -1,4 +1,5 @@
-SRC_DIR := include src/hw
+DEVICES := $(notdir $(wildcard devices/*))
+NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 QEMU_DIR := qemu
 BUILD_DIR := $(QEMU_DIR)/build
 PATCH_MARKER := $(QEMU_DIR)/.patched
@@ -10,7 +11,7 @@ build: patch format
 		cd $(BUILD_DIR) && \
 		../configure --target-list=$(BUILD_TARGETS); \
 	fi
-	$(MAKE) -j$(shell nproc) -C $(BUILD_DIR)
+	$(MAKE) -j$(NPROC) -C $(BUILD_DIR)
 
 patch:
 	@if [ ! -f $(PATCH_MARKER) ]; then \
@@ -23,8 +24,12 @@ patch:
 		echo "patch already applied ($(PATCH_MARKER) exists)"; \
 	fi
 
-run: build
-	bash ./scripts/start.sh
+# run a device, e.g. make cafe DRIVE=path/to/image.qcow2
+$(DEVICES): build
+ifndef DRIVE
+	$(error set DRIVE to a qcow2 image, e.g. make $@ DRIVE=path/to/image.qcow2)
+endif
+	$(MAKE) DRIVE=$(abspath $(DRIVE)) -C devices/$@ run
 
 clean:
 	@if [ -d $(BUILD_DIR) ]; then \
@@ -38,6 +43,6 @@ deinit:
 	git submodule deinit -f $(QEMU_DIR)
 
 format:
-	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
+	find devices -iname '*.[hc]' | xargs clang-format -i
 
-.PHONY: build patch run clean prune deinit format
+.PHONY: build patch clean prune deinit format $(DEVICES)
