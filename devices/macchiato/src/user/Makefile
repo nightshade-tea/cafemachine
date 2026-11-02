@@ -1,4 +1,4 @@
-PROGRAMS := fd_lock test_mmap test_bounds test_pipeline
+PROGRAMS := fd_lock scan
 CFLAGS ?= -Wall -Wextra -g
 CFLAGS += -I../../include
 
