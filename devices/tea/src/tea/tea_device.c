@@ -45,7 +45,7 @@ static void tea_realize(PCIDevice *pci_dev, Error **errp)
 }
 
 /* initialize tea device class (TeaClass) methods and static attributes */
-static void tea_class_init(ObjectClass *klass, void *data)
+static void tea_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *device_class = DEVICE_CLASS(klass);
     PCIDeviceClass *pci_device_class = PCI_DEVICE_CLASS(klass);

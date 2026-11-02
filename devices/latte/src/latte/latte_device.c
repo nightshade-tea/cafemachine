@@ -54,7 +54,7 @@ static void latte_realize(PCIDevice *pci_dev, Error **errp)
 }
 
 /* initialize latte device class (LatteClass) methods and static attributes */
-static void latte_class_init(ObjectClass *klass, void *data)
+static void latte_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *device_class = DEVICE_CLASS(klass);
     PCIDeviceClass *pci_device_class = PCI_DEVICE_CLASS(klass);

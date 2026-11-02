@@ -102,7 +102,7 @@ static void macchiato_exit(PCIDevice *pci_dev)
 
 /* initialize macchiato device class (MacchiatoClass) methods and static
  * attributes */
-static void macchiato_class_init(ObjectClass *klass, void *data)
+static void macchiato_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *device_class = DEVICE_CLASS(klass);
     PCIDeviceClass *pci_device_class = PCI_DEVICE_CLASS(klass);
