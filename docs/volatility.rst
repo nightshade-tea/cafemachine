@@ -1,13 +1,15 @@
 Analyzing cafemachine memory dumps with volatility
 ==================================================
 
-The cafe device can generate raw memory dumps on demand, containing all data on
-the physical address space from address 0 up to the highest address mapped to
-RAM.
+The cafe and tea devices can generate raw memory dumps, containing all data
+on the physical address space from address 0 up to the highest address mapped
+to RAM.
 
-A memory dump can be triggered by the ioctl operation CAFE_IOCTL_DUMP_MEM.
-This command causes the cafe driver to tell the cafe device to read all content
-from RAM and write it in a file on the host machine.
+- cafe: the ioctl operation CAFE_IOCTL_DUMP_MEM makes the cafe driver tell
+  the device to write all of RAM to a file on the host machine.
+
+- tea: no guest driver is needed. Trigger a dump from the host with
+  ``client dump`` and download it with ``client get``.
 
 1. Setting up volatility
 ------------------------
