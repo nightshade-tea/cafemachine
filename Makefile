@@ -18,7 +18,7 @@ $(QEMU_DIR)/.git:
 
 patch: $(PATCH_MARKER)
 
-$(PATCH_MARKER): $(QEMU_DIR)/.git
+$(PATCH_MARKER): $(QEMU_DIR)/.git devices
 	bash scripts/patch.sh
 	touch $@
 

@@ -6,14 +6,22 @@ set -eEuo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 QEMU_DIR=$ROOT/qemu
 
-for dev in "$ROOT"/devices/*/; do
-  name=$(basename "$dev")
+append() {
+  grep -qxF "$1" "$2" || echo "$1" >> "$2"
+}
+
+cd "$ROOT/devices"
+
+for name in */; do
+  name=${name%/}
 
   # link our device source inside qemu
-  ln -s "$dev/src/$name" "$QEMU_DIR/hw/"
-  ln -s "$dev"/include/*.h "$QEMU_DIR/include/"
+  ln -sfn "../../devices/$name/src/$name" "$QEMU_DIR/hw/$name"
+  for header in "$name"/include/*.h; do
+    ln -sf "../../devices/$header" "$QEMU_DIR/include/"
+  done
 
   # include it in the build steps
-  echo "source $name/Kconfig" >> "$QEMU_DIR/hw/Kconfig"
-  echo "subdir('$name')" >> "$QEMU_DIR/hw/meson.build"
+  append "source $name/Kconfig" "$QEMU_DIR/hw/Kconfig"
+  append "subdir('$name')" "$QEMU_DIR/hw/meson.build"
 done
