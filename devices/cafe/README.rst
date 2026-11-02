@@ -12,7 +12,7 @@ triggers memory dumps through the ioctl operation CAFE_IOCTL_DUMP_MEM.
 1. Running
 ----------
 
-Build QEMU and start a guest with the cafe device attached
+Build QEMU and start a guest with the cafe device attached::
 
     make cafe DRIVE=path/to/image.qcow2
 
@@ -21,7 +21,7 @@ See `docs/guest.rst <../../docs/guest.rst>`_ for setting up the guest.
 2. Building the driver and tests
 --------------------------------
 
-Inside the guest, from the shared folder
+Inside the guest, from the shared folder::
 
     cd devices/cafe
     make guest
@@ -30,7 +30,7 @@ Inside the guest, from the shared folder
 3. Dumping memory
 -----------------
 
-Run dump inside the guest
+Run dump inside the guest::
 
     ./src/user/dump
 
