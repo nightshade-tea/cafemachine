@@ -3,3 +3,13 @@
 **/*.iso
 **/*.dat
 qemu-debug.log
+
+# build artifacts
+*.o
+*.ko
+*.cmd
+*.mod
+*.mod.c
+*.order
+*.symvers
+.*.o.d

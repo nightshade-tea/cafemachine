@@ -1,21 +1,20 @@
-MAIN := ps-server
-CC := gcc
-CFLAGS := -Wall -Wextra -g -I.
+PROGRAM := ps-server
+CFLAGS ?= -Wall -Wextra -g
+LDLIBS += -pthread
+PREFIX ?= /usr/local
 
-$(MAIN): $(patsubst %.c,%.o,$(wildcard *.c))
+$(PROGRAM):
 
-install: $(MAIN)
-	cp $(MAIN) /usr/local/bin/
-	cp $(MAIN).service /etc/systemd/system/
+install: $(PROGRAM)
+	install -D -m 755 $(PROGRAM) $(DESTDIR)$(PREFIX)/bin/$(PROGRAM)
+	install -D -m 644 $(PROGRAM).service $(DESTDIR)/etc/systemd/system/$(PROGRAM).service
+	systemctl daemon-reload
 
 uninstall:
-	rm  /usr/local/bin/$(MAIN)
-	rm  /etc/systemd/system/$(MAIN).service
+	rm -f $(DESTDIR)$(PREFIX)/bin/$(PROGRAM) $(DESTDIR)/etc/systemd/system/$(PROGRAM).service
+	systemctl daemon-reload
 
 clean:
-	rm -rf $(MAIN) *.o
+	rm -f $(PROGRAM)
 
-format:
-	find . -iname '*.[hc]' | xargs clang-format -i
-
-.PHONY: clean format
+.PHONY: install uninstall clean

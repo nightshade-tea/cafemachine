@@ -1,13 +1,13 @@
-MAIN := client
-CC := gcc
-CFLAGS := -Wall -Wextra -g -I. -I../../include
+PROGRAM := client
+OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
+CFLAGS ?= -Wall -Wextra -g
+CFLAGS += -I../../include
 
-$(MAIN): $(patsubst %.c,%.o,$(wildcard *.c))
+$(PROGRAM): $(OBJS)
+
+$(OBJS): $(wildcard *.h) ../../include/tea.h
 
 clean:
-	rm -rf $(MAIN) *.o
+	rm -f $(PROGRAM) $(OBJS)
 
-format:
-	find . -iname '*.[hc]' | xargs clang-format -i
-
-.PHONY: clean format
+.PHONY: clean

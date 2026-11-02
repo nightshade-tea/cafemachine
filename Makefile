@@ -1,40 +1,36 @@
-DEVICES := $(notdir $(wildcard devices/*))
-NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 QEMU_DIR := qemu
 BUILD_DIR := $(QEMU_DIR)/build
 PATCH_MARKER := $(QEMU_DIR)/.patched
-BUILD_TARGETS := x86_64-softmmu
+TARGETS := x86_64-softmmu
+DEVICES := $(notdir $(wildcard devices/*))
+NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 
-build: patch format
-	@if [ ! -d $(BUILD_DIR) ]; then \
-		mkdir -p $(BUILD_DIR) && \
-		cd $(BUILD_DIR) && \
-		../configure --target-list=$(BUILD_TARGETS); \
-	fi
+build: $(PATCH_MARKER)
+	@test -d $(BUILD_DIR) || { mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && \
+		../configure --target-list=$(TARGETS); }
 	$(MAKE) -j$(NPROC) -C $(BUILD_DIR)
 
-patch:
-	@if [ ! -f $(PATCH_MARKER) ]; then \
-		git submodule update --init $(QEMU_DIR) && \
-		git config submodule.$(QEMU_DIR).ignore all && \
-		bash ./scripts/patch.sh && \
-		touch $(PATCH_MARKER) && \
-		echo "QEMU patched"; \
-	else \
-		echo "patch already applied ($(PATCH_MARKER) exists)"; \
-	fi
+init: $(QEMU_DIR)/.git
+
+$(QEMU_DIR)/.git:
+	git submodule update --init $(QEMU_DIR)
+	git config submodule.$(QEMU_DIR).ignore all
+
+patch: $(PATCH_MARKER)
+
+$(PATCH_MARKER): $(QEMU_DIR)/.git
+	bash scripts/patch.sh
+	touch $@
 
 # run a device, e.g. make cafe DRIVE=path/to/image.qcow2
-$(DEVICES): build
-ifndef DRIVE
-	$(error set DRIVE to a qcow2 image, e.g. make $@ DRIVE=path/to/image.qcow2)
-endif
-	$(MAKE) DRIVE=$(abspath $(DRIVE)) -C devices/$@ run
+$(DEVICES):
+	$(MAKE) -C devices/$@ run $(if $(DRIVE),DRIVE=$(abspath $(DRIVE)))
+
+format:
+	find devices -name '*.[ch]' | xargs clang-format -i
 
 clean:
-	@if [ -d $(BUILD_DIR) ]; then \
-		$(MAKE) -C $(BUILD_DIR) clean; \
-	fi
+	test ! -d $(BUILD_DIR) || $(MAKE) -C $(BUILD_DIR) clean
 
 prune:
 	rm -rf $(BUILD_DIR)
@@ -42,7 +38,4 @@ prune:
 deinit:
 	git submodule deinit -f $(QEMU_DIR)
 
-format:
-	find devices -iname '*.[hc]' | xargs clang-format -i
-
-.PHONY: build patch clean prune deinit format $(DEVICES)
+.PHONY: build init patch format clean prune deinit $(DEVICES)

@@ -1,7 +1,10 @@
 PROGRAMS := fd_lock test_mmap test_bounds test_pipeline
-CFLAGS := -I../../include
+CFLAGS ?= -Wall -Wextra -g
+CFLAGS += -I../../include
 
-build: $(PROGRAMS)
+all: $(PROGRAMS)
 
 clean:
 	rm -f $(PROGRAMS)
+
+.PHONY: all clean

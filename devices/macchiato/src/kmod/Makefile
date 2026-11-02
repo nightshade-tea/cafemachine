@@ -1,15 +1,13 @@
-obj-m += macchiato.o
-macchiato-objs += kmod.o data.o mmio.o irq.o chardev.o
+obj-m := macchiato.o
+macchiato-objs := kmod.o data.o mmio.o irq.o chardev.o
 ccflags-y := -I$(src)/../../include
 
-.PHONY: build clean format
+KDIR ?= /lib/modules/$(shell uname -r)/build
 
-build:
-	$(MAKE) -j$(shell nproc) -C /lib/modules/$(shell uname -r)/build M=$(PWD) \
-		modules
+all:
+	$(MAKE) -C $(KDIR) M=$(CURDIR) modules
 
 clean:
-	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	$(MAKE) -C $(KDIR) M=$(CURDIR) clean
 
-format:
-	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i
+.PHONY: all clean
