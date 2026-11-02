@@ -16,7 +16,7 @@ to RAM.
 
 First of all, grab the source code for volatility3::
 
-    https://github.com/volatilityfoundation/volatility3
+    git clone https://github.com/volatilityfoundation/volatility3.git
 
 In order to use memory analysis plugins on volatility, you'll need the symbol
 table for the linux kernel image that is running on the guest VM.
@@ -30,8 +30,8 @@ For example, if you are running debian on the guest these are the steps:
 - Copy the debug kernel image from /usr/lib/debug/boot/vmlinux-$(uname -r) to
   the host
 
-- Extract debug symbols using dwarf2json, available at
-  https://github.com/volatilityfoundation/dwarf2json::
+- Extract debug symbols using `dwarf2json
+  <https://github.com/volatilityfoundation/dwarf2json>`_::
 
     dwarf2json linux --elf vmlinux > symbols.json
 
